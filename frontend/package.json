@@ -1,0 +1,37 @@
+{
+  "name": "@laundry-plugs/frontend",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Fools' Valley Laundry - is the washing machine free yet?",
+  "author": "Aleks-Daniel Jakimenko-Aleksejev <alex.jakimenko@gmail.com>",
+  "type": "module",
+  "scripts": {
+    "check": "vue-tsc --noEmit",
+    "lint": "oxlint src",
+    "lint:fix": "oxlint src --fix",
+    "lint-slow": "pnpm run lint && eslint src --ext .vue",
+    "dev": "quasar dev",
+    "build": "quasar build"
+  },
+  "dependencies": {
+    "@fontsource/eb-garamond": "5.3.0",
+    "@fontsource/space-mono": "5.3.0",
+    "@laundry-plugs/api": "workspace:*",
+    "@quasar/extras": "2.1.0",
+    "@tanstack/vue-query": "5.107.1",
+    "hono": "4.13.18",
+    "quasar": "2.35.4",
+    "vue": "3.5.45",
+    "vue-router": "5.5.1"
+  },
+  "devDependencies": {
+    "@quasar/app-vite": "3.10.4",
+    "unplugin-vue-components": "32.1.0",
+    "vite": "8.3.8",
+    "vue-tsc": "3.3.14"
+  },
+  "engines": {
+    "node": "26.13.1"
+  },
+  "productName": "Fools' Valley Laundry"
+}

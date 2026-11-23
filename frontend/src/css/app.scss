@@ -1,0 +1,105 @@
+body {
+  background: $paper;
+  color: $ink;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+a {
+  color: $ink;
+  text-decoration: underline;
+
+  &:hover {
+    text-decoration: none;
+    background: $ink;
+    color: $paper;
+  }
+}
+
+.display {
+  font-family: $display-font-family;
+  font-weight: 400;
+}
+
+.section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  color: $muted;
+}
+
+.text-muted {
+  color: $muted;
+}
+
+.symbol {
+  color: $moss;
+}
+
+.q-tooltip {
+  letter-spacing: 0.02em;
+  transition-duration: 0s !important;
+}
+
+.gap-xs {
+  gap: 4px;
+}
+
+.gap-sm {
+  gap: 8px;
+}
+
+.gap-md {
+  gap: 16px;
+}
+
+.gap-lg {
+  gap: 24px;
+}
+
+.gap-xl {
+  gap: 48px;
+}
+
+.page-width {
+  width: min(calc(100% - 2.5rem), 78rem);
+  margin-inline: auto;
+}
+
+.main-header,
+.main-footer {
+  padding-block: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.main-header {
+  border-bottom: 1px solid $ink;
+}
+
+.main-footer {
+  border-top: 1px solid $ink;
+}
+
+.site-logo {
+  text-decoration: none;
+  font-size: 1.15rem;
+  font-style: italic;
+}
+
+.hero {
+  padding-block: clamp(2rem, 5vw, 3.5rem);
+
+  h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 0.95;
+    margin: 0.5rem 0;
+    letter-spacing: normal;
+  }
+
+  p {
+    color: $muted;
+    font-size: 1.4rem;
+    font-style: italic;
+    margin: 0;
+  }
+}

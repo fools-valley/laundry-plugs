@@ -1,0 +1,33 @@
+$paper: #f5f5f0;
+$cream: #fffef8;
+$ink: #0a0a0a;
+$muted: #6b6b6b;
+$muted-light: #b0b0b0;
+$moss: #4a5d3a;
+$rust: #8b4a2b;
+$moss-soft: mix($moss, $paper, 18%);
+
+$primary: $moss;
+$secondary: $rust;
+$accent: $rust;
+
+$dark: $ink;
+$dark-page: $ink;
+
+$positive: $moss;
+$negative: $rust;
+$info: $muted;
+$warning: $rust;
+
+$typography-font-family: 'Space Mono', ui-monospace, monospace;
+$display-font-family: 'EB Garamond', Georgia, serif;
+
+$generic-border-radius: 0;
+$button-border-radius: 0;
+$separator-color: $ink;
+$tooltip-color: $paper;
+$tooltip-background: $ink;
+$tooltip-padding: 6px 10px;
+$tooltip-border-radius: 0;
+$tooltip-fontsize: 11px;
+$tooltip-mobile-fontsize: 12px;

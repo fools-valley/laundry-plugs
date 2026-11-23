@@ -1,0 +1,27 @@
+services:
+  frontend:
+    image: postmodern.alexdaniel.org/laundry-plugs-frontend:latest
+    networks:
+      - caddy
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        delay: 1s
+        window: 120s
+      labels:
+        caddy: fools.alexdaniel.org
+        caddy_ingress_network: caddy
+        caddy.tls: alex.jakimenko+caddy@gmail.com
+        caddy.encode: zstd gzip
+        caddy.route.0_handle_path: /api/*
+        caddy.route.0_handle_path.reverse_proxy: laundry-plugs-api_api:3001
+        caddy.route.1_handle: ''
+        caddy.route.1_handle.reverse_proxy: '{{upstreams 80}}'
+
+networks:
+  caddy:
+    external: true

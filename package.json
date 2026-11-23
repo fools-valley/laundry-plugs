@@ -1,0 +1,42 @@
+{
+  "name": "laundry-plugs",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Laundry Plugs - is the washing machine free yet?",
+  "author": "Aleks-Daniel Jakimenko-Aleksejev <alex.jakimenko@gmail.com>",
+  "type": "module",
+  "scripts": {
+    "check": "pnpm -r check",
+    "lint": "pnpm -r lint",
+    "lint-slow": "pnpm -r lint-slow",
+    "check-everything": "pnpm format && pnpm -C database exec tsgo && pnpm -C frontend exec quasar prepare && pnpm -r check && pnpm lint",
+    "check-everything-slow": "pnpm format && pnpm -C database exec tsgo && pnpm -C frontend exec quasar prepare && pnpm -r check && pnpm lint-slow",
+    "dev:api": "pnpm -C api dev",
+    "dev:frontend": "pnpm -C frontend dev",
+    "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:frontend\"",
+    "build": "pnpm -r build",
+    "drop": "psql -d postgres -c \"DROP DATABASE IF EXISTS laundry_plugs WITH (FORCE);\" && psql -d postgres -c \"CREATE DATABASE laundry_plugs;\" && pnpm -C database exec drizzle-kit migrate",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@quasar/app-vite": "3.10.4",
+    "@types/node": "26.6.6",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "concurrently": "10.0.7",
+    "eslint": "10.15.0",
+    "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-oxlint": "1.93.0",
+    "eslint-plugin-vue": "10.12.1",
+    "globals": "17.14.0",
+    "oxfmt": "0.78.0",
+    "oxlint": "1.93.0",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.72.2"
+  },
+  "engines": {
+    "node": "26.13.1"
+  },
+  "packageManager": "pnpm@12.21.0"
+}

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "schedule:yearly"],
+  "dependencyDashboard": true,
+  "dependencyDashboardApproval": false,
+  "configMigration": false,
+  "vulnerabilityAlerts": { "enabled": false },
+  "schedule": [],
+  "prHourlyLimit": 8,
+  "rangeStrategy": "pin",
+  "separateMajorMinor": false,
+  "rebaseWhen": "conflicted",
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "prCreation": "approval",
+  "packageRules": [
+    { "matchPackageNames": ["actions/setup-node"], "allowedVersions": "^4.0.0" },
+    { "matchPackageNames": ["node"], "allowedVersions": "^26.0.0" },
+    { "matchPackageNames": ["typescript"], "allowedVersions": "^6.0.0" },
+    { "matchManagers": ["github-actions"], "matchDepNames": ["node"], "allowedVersions": "^26.0.0" },
+    { "matchFileNames": ["**"], "groupName": "project" }
+  ]
+}

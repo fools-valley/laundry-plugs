@@ -1,0 +1,32 @@
+services:
+  api:
+    image: postmodern.alexdaniel.org/laundry-plugs-api:latest
+    networks:
+      - caddy
+      - laundry-plugs-internal
+    secrets:
+      - laundry_plugs_api_env
+    environment:
+      NODE_ENV: production
+      ENV_FILE: /run/secrets/laundry_plugs_api_env
+      TELEGRAM_CHAT_ID: '-1004415267872'
+      TELEGRAM_TOPIC_ID: '2'
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        order: start-first
+      restart_policy:
+        delay: 5s
+        window: 120s
+
+secrets:
+  laundry_plugs_api_env:
+    external: true
+
+networks:
+  caddy:
+    external: true
+  laundry-plugs-internal:
+    external: true

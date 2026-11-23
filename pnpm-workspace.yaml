@@ -1,0 +1,19 @@
+packages:
+  - database
+  - api
+  - frontend
+
+verifyDepsBeforeRun: false
+enableGlobalVirtualStore: false
+
+minimumReleaseAge: 4320
+
+allowBuilds:
+  '@parcel/watcher': true
+  esbuild: true
+  vue-demi: true
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+  - vue-demi

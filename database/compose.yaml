@@ -1,0 +1,48 @@
+services:
+  migrator:
+    image: postmodern.alexdaniel.org/laundry-plugs-database:latest
+    secrets:
+      - laundry_plugs_database_env
+    environment:
+      NODE_ENV: production
+      ENV_FILE: /run/secrets/laundry_plugs_database_env
+    networks:
+      - laundry-plugs-internal
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+      restart_policy:
+        condition: on-failure
+        delay: 40s
+        window: 120s
+
+  postgres:
+    image: postgres:18.4-alpine3.22
+    environment:
+      POSTGRES_DB: laundry_plugs
+      POSTGRES_USER: laundry_plugs
+      POSTGRES_PASSWORD_FILE: /run/secrets/laundry_plugs_postgres_password
+    secrets:
+      - laundry_plugs_postgres_password
+    networks:
+      - laundry-plugs-internal
+    volumes:
+      - /home/laundry-plugs/data/laundry-plugs/database:/var/lib/postgresql/18/docker
+    deploy:
+      replicas: 1
+      update_config:
+        order: stop-first
+      restart_policy:
+        delay: 1s
+        window: 120s
+
+secrets:
+  laundry_plugs_database_env:
+    external: true
+  laundry_plugs_postgres_password:
+    external: true
+
+networks:
+  laundry-plugs-internal:
+    external: true

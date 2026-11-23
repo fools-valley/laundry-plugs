@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/.quasar
+.git
+screenshots
+tmp
+*.log
+.env
+
+shelly/with-keys

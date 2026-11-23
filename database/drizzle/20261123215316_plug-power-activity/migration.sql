@@ -1,0 +1,1 @@
+ALTER TABLE "plugs"."reading" ADD COLUMN "power_activity" jsonb;

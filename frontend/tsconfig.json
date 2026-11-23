@@ -1,0 +1,6 @@
+{
+  "extends": "./.quasar/tsconfig.json",
+  "compilerOptions": { "composite": true },
+  "include": [".quasar/*.d.ts", "**/*.ts", "**/*.vue"],
+  "exclude": ["dist", "node_modules"]
+}
