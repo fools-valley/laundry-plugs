@@ -90,7 +90,31 @@ Every push to `main` builds the `database`, `api` and `frontend` images, pushes 
 One-time setup on the Swarm host:
 
 - `laundry-plugs` user for SSH deploys, registry account `laundry-plugs`, and GitHub secrets `DOCKER_REGISTRY_PASSWORD` and `SSH_KEY`
-- overlay network `laundry-plugs-internal`
+- attachable overlay network `laundry-plugs-internal` for Postgres and the API, and the existing `caddy` overlay for HTTP ingress
 - Docker secrets: `laundry_plugs_postgres_password`, and `laundry_plugs_database_env` and `laundry_plugs_api_env` each containing `DATABASE_URL=postgres://laundry_plugs:<password>@laundry-plugs-database_postgres:5432/laundry_plugs`
 - Put the same bot token used on the plugs in the API env secret as `TELEGRAM_BOT_TOKEN` to enable offline edits.
 - `/home/laundry-plugs/data/laundry-plugs/database` for Postgres data
+
+### Provision the Swarm secrets
+
+Copy `refresh-envs` to `/home/laundry-plugs/refresh-envs` on postmodern. Run the commands below as the `laundry-plugs` user on that host. The `envs/` directory holds the private source files for the three Swarm secrets.
+
+For a fresh installation, generate the files with one shared database password:
+
+```bash
+(
+  set -euo pipefail
+  umask 077
+  cd /home/laundry-plugs
+  mkdir -p envs
+  set -o noclobber
+  password=$(openssl rand -hex 32)
+  printf '%s' "$password" > envs/postgres.password
+  printf 'DATABASE_URL=postgres://laundry_plugs:%s@laundry-plugs-database_postgres:5432/laundry_plugs\n' "$password" > envs/database.env
+  cp -n envs/database.env envs/api.env
+)
+```
+
+Add `TELEGRAM_BOT_TOKEN` to `envs/api.env` if using Telegram offline edits. Run `./refresh-envs` before rerunning the first deployment. This creates missing secrets, the data directory, and an attachable internal overlay when missing. It preserves existing secrets. The frontend stack registers the site with the existing Caddy Docker Proxy, which serves the frontend and forwards `/api/*` to the API with the prefix stripped.
+
+For an already deployed service, edit its file in `envs/` and run `./refresh-envs --refresh api`, `./refresh-envs --refresh database`, or `./refresh-envs --refresh postgres`. The service rolls out twice while the script swaps in a temporary Swarm secret and then restores the original secret name used by Compose. Refreshing `database` restarts the migrator. On an initialized database, changing `envs/postgres.password` alone does not change the database user's password. Keep the password file and both connection strings consistent with the actual Postgres credential.
