@@ -115,10 +115,9 @@ function moveWeek(direction: number) {
             <BaseDate
               :value="use.startedAt"
               :mode="dateKeyFormat.format(new Date(use.startedAt)) === selectedDay.date ? 'time' : 'date-time'"
-              time-zone="Europe/Lisbon"
             />
             –
-            <BaseDate v-if="use.endedAt" :value="use.endedAt" mode="time" time-zone="Europe/Lisbon" />
+            <BaseDate v-if="use.endedAt" :value="use.endedAt" mode="time" />
             <span v-else class="running-time" role="img" aria-label="still running">
               <span class="running-time-width" aria-hidden="true">00:00</span>
               <span class="running-time-dots" aria-hidden="true"
