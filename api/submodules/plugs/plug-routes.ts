@@ -27,16 +27,13 @@ export const plugRoutes = new Hono()
     zValidator('json', shellySwitchStatusSchema),
     zValidator('header', plugReadingHeadersSchema),
     async (c) => {
-      const telegramStatus = await recordPlugReading(
+      const telegramUnavailable = await recordPlugReading(
         c.req.valid('param').identifier,
         c.get('accessToken'),
         c.req.valid('json'),
         c.req.valid('header')
       );
-      if (telegramStatus) {
-        c.header('X-Telegram-Message-Id', String(telegramStatus.messageId));
-        if (telegramStatus.unavailable) c.header('X-Telegram-Unavailable', '1');
-      }
+      if (telegramUnavailable) c.header('X-Telegram-Unavailable', '1');
       return c.body(null, 204);
     }
   );

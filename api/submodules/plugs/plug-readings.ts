@@ -92,14 +92,10 @@ export async function recordPlugReading(
     const savedMessage = plug.telegramMessage;
     if (chatId && topicId && messageId && displayName) {
       const restored = readingHeaders['x-telegram-status-restored'] === '1';
-      const sameMessage = savedMessage?.chatId === chatId && savedMessage.messageId === messageId;
+      const sameMessage =
+        savedMessage?.chatId === chatId && savedMessage.messageId === messageId && savedMessage.topicId === topicId;
       const unavailable = sameMessage && plug.telegramUnavailable && !restored;
-      if (
-        !sameMessage ||
-        savedMessage.topicId !== topicId ||
-        savedMessage.displayName !== displayName ||
-        unavailable !== plug.telegramUnavailable
-      ) {
+      if (!sameMessage || savedMessage.displayName !== displayName || unavailable !== plug.telegramUnavailable) {
         await transaction
           .update(plugInPlugs)
           .set({
@@ -108,10 +104,8 @@ export async function recordPlugReading(
           })
           .where(eq(plugInPlugs.id, plug.id));
       }
-      return { messageId, unavailable };
+      return unavailable;
     }
-    if (savedMessage && savedMessage.chatId === chatId && savedMessage.topicId === topicId) {
-      return { messageId: savedMessage.messageId, unavailable: plug.telegramUnavailable };
-    }
+    return false;
   });
 }

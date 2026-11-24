@@ -17,13 +17,49 @@ let firstActiveAt = null;
 let lastActiveAt = null;
 let firstReadingAt = null;
 let telegramMessageId = null;
-let deletedMessageId = null;
+let telegramUnavailable = false;
 let lastTelegramText = null;
 let lastTelegramInterval = null;
 let lastTelegramCycleStartedAt = null;
 let telegramStatusRestored = false;
 let telegramRequestPending = false;
 let readingPending = false;
+
+function loadTelegramMessage() {
+  try {
+    let saved = JSON.parse(Script.storage.getItem('telegramMessage'));
+    if (
+      saved &&
+      saved.chatId === CONFIG.telegramChatId &&
+      saved.topicId === CONFIG.telegramTopicId &&
+      typeof saved.messageId === 'number' &&
+      saved.messageId > 0 &&
+      saved.messageId % 1 === 0
+    )
+      telegramMessageId = saved.messageId;
+  } catch (error) {
+    print('Could not read the saved Telegram message ID');
+  }
+}
+
+function rememberTelegramMessage(messageId) {
+  if (messageId === telegramMessageId) return;
+  telegramMessageId = messageId;
+  try {
+    if (messageId === null) Script.storage.removeItem('telegramMessage');
+    else
+      Script.storage.setItem(
+        'telegramMessage',
+        JSON.stringify({
+          chatId: CONFIG.telegramChatId,
+          topicId: CONFIG.telegramTopicId,
+          messageId: messageId,
+        })
+      );
+  } catch (error) {
+    print('Could not save the Telegram message ID');
+  }
+}
 
 function reportReading() {
   if (readingPending) return;
@@ -43,6 +79,8 @@ function reportReading() {
     'X-Telegram-Topic-Id': String(CONFIG.telegramTopicId),
     'X-Telegram-Display-Name': CONFIG.displayName,
   };
+  let reportedMessageId = telegramMessageId;
+  let reportedRestored = telegramStatusRestored;
   if (telegramMessageId !== null) headers['X-Telegram-Message-Id'] = String(telegramMessageId);
   if (telegramStatusRestored) headers['X-Telegram-Status-Restored'] = '1';
 
@@ -69,25 +107,22 @@ function reportReading() {
         return;
       }
 
-      telegramStatusRestored = false;
-      let unavailable = false;
-      if (result.headers) {
+      if (reportedMessageId !== telegramMessageId) return;
+      if (reportedRestored) telegramStatusRestored = false;
+      if (result.headers && !telegramStatusRestored) {
         let headerNames = Object.keys(result.headers);
         for (let index = 0; index < headerNames.length; index++) {
           let key = headerNames[index];
-          let headerName = key.toLowerCase();
-          if (headerName === 'x-telegram-message-id' && Number(result.headers[key]) !== deletedMessageId)
-            telegramMessageId = Number(result.headers[key]);
-          if (headerName === 'x-telegram-unavailable') unavailable = result.headers[key] === '1';
+          if (key.toLowerCase() === 'x-telegram-unavailable' && result.headers[key] === '1') telegramUnavailable = true;
         }
       }
-      updateTelegramStatus(unavailable);
     }
   );
 }
 
-function updateTelegramStatus(unavailable) {
+function updateTelegramStatus() {
   if (firstReadingAt === null || telegramRequestPending) return;
+  let unavailable = telegramUnavailable;
   let now = Shelly.getComponentStatus('sys').uptime;
   let text = '🟢 ' + CONFIG.displayName + ' · Available';
   let elapsedInterval = null;
@@ -143,7 +178,7 @@ function updateTelegramStatus(unavailable) {
         return;
       }
       if (response && response.ok && response.result && response.result.message_id > 0) {
-        telegramMessageId = response.result.message_id;
+        rememberTelegramMessage(response.result.message_id);
       } else if (
         !(
           result.code === 400 &&
@@ -158,8 +193,7 @@ function updateTelegramStatus(unavailable) {
           response.description &&
           response.description.indexOf('message to edit not found') >= 0
         ) {
-          deletedMessageId = telegramMessageId;
-          telegramMessageId = null;
+          rememberTelegramMessage(null);
         }
         print('Telegram rejected the message with HTTP ' + result.code);
         return;
@@ -167,7 +201,10 @@ function updateTelegramStatus(unavailable) {
       lastTelegramText = text;
       lastTelegramInterval = elapsedInterval;
       lastTelegramCycleStartedAt = cycleStartedAt;
-      telegramStatusRestored = unavailable;
+      if (unavailable) {
+        telegramUnavailable = false;
+        telegramStatusRestored = true;
+      }
     }
   );
 }
@@ -195,11 +232,13 @@ function scheduleReading() {
   let secondsIntoMinute = Math.floor(clockSeconds) % 60;
   let delaySeconds = (CONFIG.reportSecond - secondsIntoMinute + 60) % 60 || 60;
   Timer.set(delaySeconds * 1000, false, function () {
+    updateTelegramStatus();
     reportReading();
     scheduleReading();
   });
 }
 
+loadTelegramMessage();
 Timer.set(CONFIG.checkIntervalSeconds * 1000, true, checkPower);
 checkPower();
 scheduleReading();
