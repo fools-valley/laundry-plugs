@@ -48,7 +48,7 @@ curl -X POST https://fools.alexdaniel.org/api/plugs/old-house-washer-1/readings 
 
 ## Telegram
 
-Each plug reserves one Telegram message with just its display name, saves the message ID, and edits that message in place when its status is ready. The destination is configured outside the repository: the scripts in `shelly/` carry placeholders, and the real chat and topic IDs live in the private copies of the scripts and in the API env secret.
+Each plug reserves one Telegram message with just its display name as soon as its script starts without a saved message, saves the message ID, and edits that message in place when its status is ready. The destination is configured outside the repository: the scripts in `shelly/` carry placeholders, and the real chat and topic IDs live in the private copies of the scripts and in the API env secret.
 
 - 🔴 Old House Washer 1 · In use (for 3 minutes)
 - 🟢 Old House Washer 1 · Available

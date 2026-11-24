@@ -264,5 +264,6 @@ function scheduleReading() {
 loadTelegramMessage();
 Timer.set(CONFIG.checkIntervalSeconds * 1000, true, checkPower);
 checkPower();
+updateTelegramStatus();
 reportReading();
 scheduleReading();
