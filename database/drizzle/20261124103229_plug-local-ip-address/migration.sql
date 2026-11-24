@@ -1,0 +1,1 @@
+ALTER TABLE "plugs"."plug" ADD COLUMN "local_ip_address" text;

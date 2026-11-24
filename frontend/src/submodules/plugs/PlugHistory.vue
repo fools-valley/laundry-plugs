@@ -34,12 +34,15 @@ const emptyWeek = computed(() =>
   Array.from({ length: 7 }, (_, index): UsageDay => {
     const day = new Date(ending.value);
     day.setUTCDate(day.getUTCDate() + index - 6);
-    return { date: day.toISOString().slice(0, 10), uses: [] };
+    return { date: day.toISOString().slice(0, 10), energyWattHours: 0, energyByPlug: [], uses: [] };
   })
 );
 const days = computed(() => data.value?.days ?? emptyWeek.value);
 const labels = computed(() =>
-  getPlugLabels([...props.identifiers, ...days.value.flatMap((day) => day.uses.map((use) => use.identifier))])
+  getPlugLabels([
+    ...props.identifiers,
+    ...days.value.flatMap((day) => [...day.uses, ...day.energyByPlug].map((entry) => entry.identifier)),
+  ])
 );
 const selectedDay = computed(
   () =>
@@ -61,7 +64,7 @@ function moveWeek(direction: number) {
       <div>
         <div class="section-label">002 / usage</div>
         <h2 id="usage-title" class="display">usage history</h2>
-        <div class="text-muted">completed cycles by day · portugal time</div>
+        <div class="text-muted">completed cycles by day</div>
       </div>
       <div class="row gap-sm">
         <q-btn outline square no-caps label="previous week" @click="moveWeek(1)" />
@@ -89,13 +92,25 @@ function moveWeek(direction: number) {
           <span :class="{ skeleton: isPending }">{{ day.uses.length }}</span>
         </button>
       </div>
-      <h3 class="display">
-        <span :class="{ skeleton: isPending }">{{ dayFormat.format(new Date(selectedDay.date)).toLowerCase() }}</span>
-      </h3>
+      <div class="day-heading row items-baseline justify-between gap-md">
+        <h3 class="display">
+          <span :class="{ skeleton: isPending }">{{ dayFormat.format(new Date(selectedDay.date)).toLowerCase() }}</span>
+        </h3>
+        <span class="text-muted" :class="{ skeleton: isPending }">
+          <BaseEnergy :watt-hours="selectedDay.energyWattHours" /> in total
+          <q-tooltip v-if="selectedDay.energyByPlug.length">
+            <div v-for="plug in selectedDay.energyByPlug" :key="plug.identifier" class="row justify-between gap-md">
+              <span>{{ labels.get(plug.identifier) }}</span>
+              <BaseEnergy :watt-hours="plug.energyWattHours" />
+            </div>
+          </q-tooltip>
+        </span>
+      </div>
       <p v-if="!selectedDay.uses.length"><span :class="{ skeleton: isPending }">no completed cycles recorded.</span></p>
       <ul v-else class="usage-log">
         <li v-for="use in selectedDay.uses" :key="`${use.identifier}-${use.startedAt}`">
           <span>{{ labels.get(use.identifier) }}</span>
+          <BaseEnergy class="usage-energy text-muted" :watt-hours="use.energyWattHours" />
           <span class="usage-time">
             <BaseDate
               :value="use.startedAt"
@@ -125,6 +140,9 @@ h2 {
 
 h3 {
   font-size: 1.9rem;
+}
+
+.day-heading {
   margin-top: 1.5rem;
 }
 
@@ -178,21 +196,50 @@ h3 {
 }
 
 .usage-log {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: 2rem;
   list-style: none;
   padding: 0;
   margin: 0;
 
   li {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.25rem 1rem;
+    display: grid;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     padding: 0.7rem 0;
     border-top: 1px solid $ink;
   }
 }
 
-.usage-time {
+.usage-energy {
+  padding-right: 1.5rem;
+  text-align: right;
   white-space: nowrap;
+}
+
+.usage-time {
+  text-align: right;
+  white-space: nowrap;
+}
+
+@media (max-width: $breakpoint-xs-max) {
+  .usage-log {
+    display: block;
+
+    li {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem 1rem;
+    }
+  }
+
+  .usage-time {
+    margin-left: auto;
+  }
+
+  .usage-energy {
+    display: none;
+  }
 }
 </style>

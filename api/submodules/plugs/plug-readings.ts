@@ -30,6 +30,7 @@ const powerActivityHeaderSchema = z.union([
 
 export const plugReadingHeadersSchema = z.object({
   'x-plug-activity': powerActivityHeaderSchema,
+  'x-plug-ip-address': z.ipv4().optional(),
   'x-telegram-chat-id': z
     .string()
     .regex(/^-100[0-9]+$/)
@@ -52,8 +53,19 @@ export async function recordPlugReading(
   return db.transaction(async (transaction) => {
     const [plug] = await transaction
       .insert(plugInPlugs)
-      .values({ identifier, createdByAccessTokenId: accessToken.id, lastReadingAt: sql`now()` })
-      .onConflictDoUpdate({ target: plugInPlugs.identifier, set: { lastReadingAt: sql`now()` } })
+      .values({
+        identifier,
+        createdByAccessTokenId: accessToken.id,
+        lastReadingAt: sql`now()`,
+        localIpAddress: readingHeaders['x-plug-ip-address'],
+      })
+      .onConflictDoUpdate({
+        target: plugInPlugs.identifier,
+        set: {
+          lastReadingAt: sql`now()`,
+          localIpAddress: readingHeaders['x-plug-ip-address'],
+        },
+      })
       .returning({
         id: plugInPlugs.id,
         telegramMessage: plugInPlugs.telegramMessage,

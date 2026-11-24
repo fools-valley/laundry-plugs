@@ -7,7 +7,7 @@ const statusLabels = {
   idle: 'available',
   running: 'in use',
   finished: 'available',
-  offline: 'unavailable',
+  offline: 'offline',
 } satisfies Record<PlugStatus['status'], string>;
 </script>
 
@@ -17,7 +17,7 @@ const statusLabels = {
       <h3 class="display"><span class="skeleton">old house washer</span></h3>
       <span class="status skeleton">✦ available</span>
     </div>
-    <p class="headline"><span class="skeleton">ready when you are.</span></p>
+    <p class="headline"><span class="skeleton">waiting for you</span></p>
     <p class="telemetry"><span class="skeleton">updated just now · 0 W</span></p>
   </article>
   <article v-else class="plug-card column gap-md" :class="`plug-card--${plug.status}`">
@@ -28,13 +28,13 @@ const statusLabels = {
 
     <p class="headline">
       <template v-if="plug.status === 'running' && plug.cycleStartedAt">
-        started <BaseDate :value="plug.cycleStartedAt" />.
+        started <BaseDate :value="plug.cycleStartedAt" />
       </template>
       <template v-else-if="plug.status === 'finished' && plug.lastUsedAt">
-        last used <BaseDate :value="plug.lastUsedAt" />.
+        finished <BaseDate :value="plug.lastUsedAt" />
       </template>
-      <template v-else-if="plug.status === 'offline'">does it exist?</template>
-      <template v-else>ready when you are.</template>
+      <template v-else-if="plug.status === 'offline'">unplugged</template>
+      <template v-else>waiting for you</template>
     </p>
     <p v-if="plug.lastReadingAt" class="telemetry text-muted">
       updated <BaseDate :value="plug.lastReadingAt" />

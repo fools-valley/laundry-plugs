@@ -40,7 +40,7 @@ export function startTelegramAvailabilityCheck() {
             body: JSON.stringify({
               chat_id: chatId,
               message_id: message.messageId,
-              text: `⚪ ${message.displayName} · Unavailable`,
+              text: `⚪ ${message.displayName} · Offline`,
             }),
             signal: AbortSignal.timeout(5000),
           });

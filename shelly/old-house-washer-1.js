@@ -91,6 +91,8 @@ function reportReading() {
   };
   let reportedMessageId = telegramMessageId;
   let reportedRestored = telegramStatusRestored;
+  let wifi = Shelly.getComponentStatus('wifi');
+  if (wifi && wifi.sta_ip) headers['X-Plug-Ip-Address'] = wifi.sta_ip;
   if (telegramMessageId !== null) headers['X-Telegram-Message-Id'] = String(telegramMessageId);
   if (telegramStatusRestored) headers['X-Telegram-Status-Restored'] = '1';
 

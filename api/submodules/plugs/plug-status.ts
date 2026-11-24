@@ -1,17 +1,18 @@
-import { between, gte, sql } from 'drizzle-orm';
-import { db, type Reading } from '@laundry-plugs/database/src/db';
+import { between, eq, gte, ne, sql } from 'drizzle-orm';
+import { db, plugInPlugs, readingInPlugs, type Reading } from '@laundry-plugs/database/src/db';
 
 const minuteMilliseconds = 60 * 1000;
 const cyclePauseMilliseconds = 3 * minuteMilliseconds;
 const minimumCycleMilliseconds = 3 * minuteMilliseconds;
 export const offlineAfterMilliseconds = 5 * minuteMilliseconds;
-const finishedForMilliseconds = 2 * 60 * minuteMilliseconds;
+const finishedForMilliseconds = 5 * 60 * minuteMilliseconds;
 const usageDayFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', dateStyle: 'short' });
 
-type Cycle = { startedAt: number; endedAt: number };
-type Use = { identifier: string; startedAt: string; endedAt: string };
+type Cycle = { startedAt: number; endedAt: number; energyWattHours: number };
+type Use = { identifier: string; startedAt: string; endedAt: string; energyWattHours: number };
+type PlugEnergy = { identifier: string; energyWattHours: number };
 
-function findCycles(readings: Pick<Reading, 'createdAt' | 'powerActivity'>[]) {
+function findCycles(readings: (Pick<Reading, 'createdAt' | 'powerActivity'> & { energyWattHours?: number })[]) {
   const cycles: Cycle[] = [];
   for (const reading of readings) {
     const activity = reading.powerActivity;
@@ -19,10 +20,12 @@ function findCycles(readings: Pick<Reading, 'createdAt' | 'powerActivity'>[]) {
     const at = Date.parse(reading.createdAt);
     const startedAt = at - activity.firstAgeSeconds * 1000;
     const endedAt = at - activity.lastAgeSeconds * 1000;
+    const energyWattHours = reading.energyWattHours ?? 0;
     const lastCycle = cycles.at(-1);
-    if (lastCycle && startedAt - lastCycle.endedAt < cyclePauseMilliseconds)
+    if (lastCycle && startedAt - lastCycle.endedAt < cyclePauseMilliseconds) {
       lastCycle.endedAt = Math.max(lastCycle.endedAt, endedAt);
-    else cycles.push({ startedAt, endedAt });
+      lastCycle.energyWattHours += energyWattHours;
+    } else cycles.push({ startedAt, endedAt, energyWattHours });
   }
   return cycles;
 }
@@ -42,7 +45,7 @@ function determineStatus(
 export async function listPlugStatuses() {
   const plugs = await db.query.plugInPlugs.findMany({
     columns: { identifier: true, lastReadingAt: true },
-    orderBy: { identifier: 'asc' },
+    orderBy: { createdAt: 'asc', identifier: 'asc' },
     with: {
       latestReadings: { columns: { powerWatts: true }, orderBy: { createdAt: 'desc' }, limit: 1 },
       readings: {
@@ -80,44 +83,90 @@ export async function listPlugStatuses() {
 }
 
 export async function listPlugUsage(ending: string) {
-  const days = Array.from({ length: 7 }, (_, index): { date: string; uses: Use[] } => {
-    const date = new Date(ending);
-    date.setUTCDate(date.getUTCDate() + index - 6);
-    return { date: date.toISOString().slice(0, 10), uses: [] };
-  });
-  const usesByDate = new Map(days.map((day) => [day.date, day.uses]));
+  const days = Array.from(
+    { length: 7 },
+    (_, index): { date: string; energyWattHours: number; energyByPlug: PlugEnergy[]; uses: Use[] } => {
+      const date = new Date(ending);
+      date.setUTCDate(date.getUTCDate() + index - 6);
+      return { date: date.toISOString().slice(0, 10), energyWattHours: 0, energyByPlug: [], uses: [] };
+    }
+  );
+  const daysByDate = new Map(days.map((day) => [day.date, day]));
 
-  const plugs = await db.query.plugInPlugs.findMany({
-    columns: { identifier: true },
-    with: {
-      readings: {
-        columns: { createdAt: true, powerActivity: true },
-        where: {
-          powerActivity: { ne: 'quiet' },
-          RAW: (reading) =>
-            between(
-              reading.createdAt,
-              sql`((${ending}::date - 6)::timestamp AT TIME ZONE 'Europe/Lisbon') - interval '24 hours'`,
-              sql`((${ending}::date + 1)::timestamp AT TIME ZONE 'Europe/Lisbon') + ${cyclePauseMilliseconds + minuteMilliseconds} * interval '1 millisecond'`
-            ),
-        },
-        orderBy: { createdAt: 'asc' },
-      },
-    },
-  });
+  // The energy counter is cumulative but can restart from zero, so a drop counts as no usage rather than negative usage.
+  const energyReadings = db.$with('energy_readings').as(
+    db
+      .select({
+        plugId: readingInPlugs.plugId,
+        createdAt: readingInPlugs.createdAt,
+        powerActivity: readingInPlugs.powerActivity,
+        energyWattHours:
+          sql<number>`greatest(${readingInPlugs.energyTotalWattHours} - lag(${readingInPlugs.energyTotalWattHours}) over (partition by ${readingInPlugs.plugId} order by ${readingInPlugs.createdAt}), 0)`.as(
+            'energy_watt_hours'
+          ),
+      })
+      .from(readingInPlugs)
+      .where(
+        between(
+          readingInPlugs.createdAt,
+          sql`((${ending}::date - 6)::timestamp AT TIME ZONE 'Europe/Lisbon') - interval '24 hours'`,
+          sql`((${ending}::date + 1)::timestamp AT TIME ZONE 'Europe/Lisbon') + ${cyclePauseMilliseconds + minuteMilliseconds} * interval '1 millisecond'`
+        )
+      )
+  );
+  const usageDate = sql<string>`to_char(${energyReadings.createdAt} AT TIME ZONE 'Europe/Lisbon', 'YYYY-MM-DD')`;
+  const [dailyEnergy, activeReadings] = await Promise.all([
+    db
+      .with(energyReadings)
+      .select({
+        date: usageDate,
+        identifier: plugInPlugs.identifier,
+        energyWattHours: sql<number>`sum(${energyReadings.energyWattHours})`.mapWith(Number),
+      })
+      .from(energyReadings)
+      .innerJoin(plugInPlugs, eq(plugInPlugs.id, energyReadings.plugId))
+      .groupBy(usageDate, plugInPlugs.id)
+      .orderBy(plugInPlugs.createdAt, plugInPlugs.identifier),
+    db
+      .with(energyReadings)
+      .select({
+        identifier: plugInPlugs.identifier,
+        createdAt: energyReadings.createdAt,
+        powerActivity: energyReadings.powerActivity,
+        energyWattHours: energyReadings.energyWattHours,
+      })
+      .from(energyReadings)
+      .innerJoin(plugInPlugs, eq(plugInPlugs.id, energyReadings.plugId))
+      .where(ne(energyReadings.powerActivity, 'quiet'))
+      .orderBy(plugInPlugs.createdAt, plugInPlugs.identifier, energyReadings.createdAt),
+  ]);
+  for (const { date, identifier, energyWattHours } of dailyEnergy) {
+    const day = daysByDate.get(date);
+    if (!day) continue;
+    day.energyWattHours += energyWattHours;
+    day.energyByPlug.push({ identifier, energyWattHours });
+  }
+  const readingsByIdentifier = Map.groupBy(activeReadings, (reading) => reading.identifier);
 
   const now = Date.now();
-  for (const plug of plugs) {
-    for (const cycle of findCycles(plug.readings)) {
+  for (const [identifier, readings] of readingsByIdentifier) {
+    for (const cycle of findCycles(readings)) {
       if (cycle.endedAt - cycle.startedAt < minimumCycleMilliseconds || now - cycle.endedAt < cyclePauseMilliseconds)
         continue;
-      usesByDate.get(usageDayFormat.format(cycle.endedAt))?.push({
-        identifier: plug.identifier,
+      daysByDate.get(usageDayFormat.format(cycle.endedAt))?.uses.push({
+        identifier,
         startedAt: new Date(cycle.startedAt).toISOString(),
         endedAt: new Date(cycle.endedAt).toISOString(),
+        energyWattHours: cycle.energyWattHours,
       });
     }
   }
-  for (const day of days) day.uses.sort((first, second) => second.endedAt.localeCompare(first.endedAt));
+  const plugPositions = new Map([...readingsByIdentifier.keys()].map((identifier, position) => [identifier, position]));
+  for (const day of days)
+    day.uses.sort(
+      (first, second) =>
+        (plugPositions.get(first.identifier) ?? 0) - (plugPositions.get(second.identifier) ?? 0) ||
+        first.startedAt.localeCompare(second.startedAt)
+    );
   return { days };
 }

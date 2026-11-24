@@ -23,6 +23,7 @@ export const plugInPlugs = plugsSchema.table(
       .notNull()
       .references(() => accessTokenInAuth.id),
     lastReadingAt: timestamp('last_reading_at', { withTimezone: true, mode: 'string' }),
+    localIpAddress: text('local_ip_address'),
     telegramMessage: jsonb('telegram_message').$type<{
       chatId: string;
       topicId: number;

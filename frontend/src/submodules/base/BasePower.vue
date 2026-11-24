@@ -3,9 +3,10 @@ import { computed } from 'vue';
 
 const props = defineProps<{ watts: number }>();
 
-const powerFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
+const smallPowerFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 1 });
+const largePowerFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 0 });
 
-const label = computed(() => `${powerFormat.format(props.watts)} W`);
+const label = computed(() => `${(props.watts >= 1000 ? largePowerFormat : smallPowerFormat).format(props.watts)} W`);
 </script>
 
 <template>
