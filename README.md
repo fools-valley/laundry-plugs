@@ -1,6 +1,6 @@
 # Laundry Plugs
 
-Is the machine free? Shelly smart plugs under the washers and dryers at [fools' valley](https://foolsvalley.com/) report their power draw every minute, and a small page shows which machines are available, in use or unavailable.
+Is the machine free? Shelly smart plugs under the washers and dryers at [fools' valley](https://foolsvalley.com/) report their power draw every minute, and a small page shows which machines are available, in use or unavailable. The source lives at [fools-valley/laundry-plugs](https://github.com/fools-valley/laundry-plugs) (private).
 
 - `database/`: Drizzle schema and migrations (PostgreSQL)
 - `api/`: Hono API that receives plug readings and serves plug statuses
