@@ -9,8 +9,6 @@ services:
     environment:
       NODE_ENV: production
       ENV_FILE: /run/secrets/laundry_plugs_api_env
-      TELEGRAM_CHAT_ID: '-1004415267872'
-      TELEGRAM_TOPIC_ID: '2'
     deploy:
       replicas: 1
       update_config:

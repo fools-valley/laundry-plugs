@@ -48,7 +48,7 @@ curl -X POST https://fools.alexdaniel.org/api/plugs/old-house-washer-1/readings 
 
 ## Telegram
 
-Each plug reserves one Telegram message with just its display name, saves the message ID, and edits that message in place when its status is ready. The default destination is the private test topic.
+Each plug reserves one Telegram message with just its display name, saves the message ID, and edits that message in place when its status is ready. The destination is configured outside the repository: the scripts in `shelly/` carry placeholders, and the real chat and topic IDs live in the private copies of the scripts and in the API env secret.
 
 - 🔴 Old House Washer 1 · In use (for 3 minutes)
 - 🟢 Old House Washer 1 · Available
@@ -58,11 +58,7 @@ The plug samples power every second. Any sample of 5 W or more counts as activit
 
 The plug sends the full switch status to the API every minute. After Telegram confirms the initial message, the next reading carries its chat, topic and message IDs and machine name in HTTP headers. The API stores that reference and checks once a minute for plugs that have missed more than five minutes of readings. It edits the tracked message to Offline once, then tells the plug to restore its own status when reporting resumes. The plug stores its Telegram message ID, chat and topic in persistent script storage and reuses that message after reboot. Telegram updates run independently of whether the reading reaches the API. When reporting resumes, the API can flag that it marked the saved message Offline so the plug refreshes it. The updated script may post a new status line on first run because earlier versions stored the ID only on the server.
 
-Switching destinations requires updating the scripts and the API's `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` together.
-
-| Destination                                                         | Chat ID          | Topic ID |
-| ------------------------------------------------------------------- | ---------------- | -------- |
-| “Laundry” topic in the private “Fools Laundry Test” group (current) | `-1004415267872` | `2`      |
+Switching destinations requires updating every plug's `telegramChatId` and `telegramTopicId` and the API's `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` together. A plug whose destination changes posts a new message there. For local testing, use the “Laundry” topic in the private “Fools Laundry Test” group: chat `-1004415267872`, topic `2`.
 
 ## Setting up a plug
 
@@ -70,7 +66,7 @@ The plugs are Shelly Plug M Gen3. Any Gen2 or newer Shelly plug with a power met
 
 1. Connect the plug to Wi-Fi, update its firmware and open its web UI. Set a password for the web UI (**Settings → Authentication**): the script holds the bot token, and anyone on the network could otherwise read it.
 2. Under **Scripts**, create a script and paste the matching file below.
-3. Set `apiToken` (an access token from above) and `telegramBotToken`. The machine name, identifier, reporting slot and test topic are already configured.
+3. Set `apiToken` (an access token from above), `telegramBotToken`, `telegramChatId` and `telegramTopicId`. The machine name, identifier and reporting slot are already configured.
 4. Save, start it and enable **Run on startup**. The plug appears on the page after its first reading.
 
 | Device             | Script                         | Second of each minute |
@@ -93,7 +89,7 @@ One-time setup on the Swarm host:
 - `laundry-plugs` user for SSH deploys, registry account `laundry-plugs`, and GitHub secrets `DOCKER_REGISTRY_PASSWORD` and `SSH_KEY`
 - attachable overlay network `laundry-plugs-internal` for Postgres and the API, and the existing `caddy` overlay for HTTP ingress
 - Docker secrets: `laundry_plugs_postgres_password`, and `laundry_plugs_database_env` and `laundry_plugs_api_env` each containing `DATABASE_URL=postgres://laundry_plugs:<password>@laundry-plugs-database_postgres:5432/laundry_plugs`
-- Put the same bot token used on the plugs in the API env secret as `TELEGRAM_BOT_TOKEN` to enable offline edits.
+- Put the same bot token, chat ID and topic ID used on the plugs in the API env secret as `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` to enable offline edits.
 - `/home/laundry-plugs/data/laundry-plugs/database` for Postgres data
 
 ### Provision the Swarm secrets
@@ -116,6 +112,6 @@ For a fresh installation, generate the files with one shared database password:
 )
 ```
 
-Add `TELEGRAM_BOT_TOKEN` to `envs/api.env` if using Telegram offline edits. Run `./refresh-envs` before rerunning the first deployment. It creates the data directory, the attachable internal overlay and any missing secrets, and prints what it did with each secret. The frontend stack registers the site with the existing Caddy Docker Proxy, which serves the frontend and forwards `/api/*` to the API with the prefix stripped.
+Add `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` to `envs/api.env` if using Telegram offline edits. Run `./refresh-envs` before rerunning the first deployment. It creates the data directory, the attachable internal overlay and any missing secrets, and prints what it did with each secret. The frontend stack registers the site with the existing Caddy Docker Proxy, which serves the frontend and forwards `/api/*` to the API with the prefix stripped.
 
 After editing any file in `envs/`, run `./refresh-envs` again. It stores a SHA-256 of each file as a label on its Swarm secret and rolls out only the services whose file changed, twice each, while it swaps in a temporary Swarm secret and then restores the original secret name used by Compose. Secrets created before these labels count as changed once. Refreshing `database` restarts the migrator. On an initialized database, changing `envs/postgres.password` alone does not change the database user's password. Keep the password file and both connection strings consistent with the actual Postgres credential.
