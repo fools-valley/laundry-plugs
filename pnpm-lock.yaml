@@ -275,9 +275,6 @@ importers:
       '@laundry-plugs/api':
         specifier: workspace:*
         version: link:../api
-      '@quasar/extras':
-        specifier: 2.1.0
-        version: 2.1.0
       '@tanstack/vue-query':
         specifier: 5.107.1
         version: 5.107.1(vue@3.5.45(typescript@6.0.3))
@@ -1219,9 +1216,6 @@ packages:
 
   '@quasar/art@1.0.0':
     resolution: {integrity: sha512-IAV8Qg2QM3U2alywUcCELyOlHCUNbJYmiVDRTLgcgmyBlQwo3Wk33eHAyT9cpnV5CqlmuYXe6UZt0Ybi1m0lMA==}
-
-  '@quasar/extras@2.1.0':
-    resolution: {integrity: sha512-WCqHXr3loA9bP1DUuzmCwuNXnHa9GKosAtjwJnr1DpngO68a0JoiyVuoXzc760tCBArdFLD/YAUHvItPbk6V2Q==}
 
   '@quasar/render-ssr-error@2.2.6':
     resolution: {integrity: sha512-v8Q/uxmPwlBbN6lC/fObFk564A7CGFTVnObmdchhDMj817t17P6RsIyFVA8BUwuW0MdG2AWrrjpbhnXIgzuzvA==}
@@ -3710,8 +3704,6 @@ snapshots:
       - yaml
 
   '@quasar/art@1.0.0': {}
-
-  '@quasar/extras@2.1.0': {}
 
   '@quasar/render-ssr-error@2.2.6':
     dependencies:

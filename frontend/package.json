@@ -2,7 +2,7 @@
   "name": "@laundry-plugs/frontend",
   "version": "0.0.1",
   "private": true,
-  "description": "Fools' Valley Laundry - is the washing machine free yet?",
+  "description": "fools' valley — is the washing machine free yet?",
   "author": "Aleks-Daniel Jakimenko-Aleksejev <alex.jakimenko@gmail.com>",
   "type": "module",
   "scripts": {
@@ -17,7 +17,6 @@
     "@fontsource/eb-garamond": "5.3.0",
     "@fontsource/space-mono": "5.3.0",
     "@laundry-plugs/api": "workspace:*",
-    "@quasar/extras": "2.1.0",
     "@tanstack/vue-query": "5.107.1",
     "hono": "4.13.18",
     "quasar": "2.35.4",
@@ -33,5 +32,5 @@
   "engines": {
     "node": "26.13.1"
   },
-  "productName": "Fools' Valley Laundry"
+  "productName": "fools' valley — laundry"
 }

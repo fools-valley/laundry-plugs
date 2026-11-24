@@ -18,7 +18,7 @@ laundry-plugs/
 
 ## Domain Rules
 
-- **Plugs create themselves.** `POST /plugs/:identifier/readings` upserts the plug by identifier and inserts the reading in one transaction. Identifiers are lowercase words joined by dashes (`old-house-washer-1`); the frontend displays them with spaces.
+- **Plugs create themselves.** `POST /plugs/:identifier/readings` upserts the plug by identifier and inserts the reading in one transaction. Plug identifiers are lowercase words joined by dashes and end in a machine number (`old-house-washer-1`). The frontend displays them with spaces and omits the number when the base name is unique.
 - **Readings use the Shelly `Switch.GetStatus` shape** (`apower`, `voltage`, `current`, `output`, `aenergy.total`, `temperature.tC`). Store the known fields in columns and the whole status in `payload`.
 - **Access tokens are created by hand in the database** (see README) and stored only as SHA-256 hex in `auth.access_token.token_hash`. Never store or log plain tokens. Revoke with `revoked_at`. Requests send `Authorization: Bearer <token>`; failures are a bare 401.
 - **Reading plug statuses is public.** Only ingestion requires a token.
@@ -34,7 +34,7 @@ Follow foolsvalley.com: warm off-white paper (`$paper`), near-black ink, moss gr
 - Palette and fonts live in `frontend/src/css/quasar.variables.scss`; global styles in `frontend/src/css/app.scss`. Never hardcode colors elsewhere; derive tints with `mix()`.
 - Source artwork lives in `branding/` (`logo.png` is current; `logo-without-basket.png` is the earlier version). `frontend/public/logo.png` is a 256 px render of `branding/logo.png` on `$paper`, and @FoolsLaundryBot's profile picture is a 640 px render with padding. Regenerate both when the logo changes; keep nothing but source files in `branding/`.
 - Always use `<style lang="scss" scoped>` and the `gap-*` helpers instead of Quasar gutter classes.
-- Use `BaseDate` for every time display (relative by default, `mode="time"` for clock times), `BasePower` for watts and `BaseEnergy` for watt-hours.
+- Use `BaseDate` for every time display (relative by default, `mode="time"` for clock times) and `BasePower` for watts.
 - Tooltips are immediate: no delay and no transition.
 - No `$q.notify`; let the page reflect state. No hover `translateY` effects.
 - After visual changes, save before/after screenshots in `screenshots/<date>-<change-slug>/` (gitignored) with `-before.png`/`-after.png` at the end of the filename, and show them in the final message.

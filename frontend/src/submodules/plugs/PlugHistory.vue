@@ -3,6 +3,9 @@ import { keepPreviousData, useQuery } from '@tanstack/vue-query';
 import { computed, ref } from 'vue';
 import { api, type UsageDay } from '../api/api-client';
 import { now } from '../base/now';
+import { getPlugLabels } from './plug-labels';
+
+const props = defineProps<{ identifiers: string[] }>();
 
 const dateKeyFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', dateStyle: 'short' });
 const weekdayFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
@@ -35,6 +38,9 @@ const emptyWeek = computed(() =>
   })
 );
 const days = computed(() => data.value?.days ?? emptyWeek.value);
+const labels = computed(() =>
+  getPlugLabels([...props.identifiers, ...days.value.flatMap((day) => day.uses.map((use) => use.identifier))])
+);
 const selectedDay = computed(
   () =>
     days.value.find((day) => day.date === selectedDate.value) ??
@@ -51,7 +57,7 @@ function moveWeek(direction: number) {
 
 <template>
   <section aria-labelledby="usage-title">
-    <div class="history-heading row items-end justify-between gap-md q-mb-lg">
+    <div class="row items-end justify-between gap-md q-mb-lg">
       <div>
         <div class="section-label">002 / usage</div>
         <h2 id="usage-title" class="display">usage history</h2>
@@ -89,7 +95,7 @@ function moveWeek(direction: number) {
       <p v-if="!selectedDay.uses.length"><span :class="{ skeleton: isPending }">no completed cycles recorded.</span></p>
       <ul v-else class="usage-log">
         <li v-for="use in selectedDay.uses" :key="`${use.identifier}-${use.startedAt}`">
-          <span>{{ use.identifier.replaceAll('-', ' ') }}</span>
+          <span>{{ labels.get(use.identifier) }}</span>
           <span class="usage-time">
             <BaseDate
               :value="use.startedAt"

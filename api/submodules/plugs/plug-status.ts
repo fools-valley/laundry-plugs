@@ -2,66 +2,40 @@ import { between, gte, sql } from 'drizzle-orm';
 import { db, type Reading } from '@laundry-plugs/database/src/db';
 
 const minuteMilliseconds = 60 * 1000;
-const activePowerWatts = 5;
 const cyclePauseMilliseconds = 3 * minuteMilliseconds;
 const minimumCycleMilliseconds = 3 * minuteMilliseconds;
-const longestReadingGapMilliseconds = 2 * minuteMilliseconds;
 export const offlineAfterMilliseconds = 5 * minuteMilliseconds;
 const finishedForMilliseconds = 2 * 60 * minuteMilliseconds;
 const usageDayFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', dateStyle: 'short' });
 
-type PowerReading = Pick<Reading, 'createdAt' | 'powerWatts' | 'powerActivity'>;
-type Cycle = { startedAt: number; endedAt: number; energyWattHours: number };
+type Cycle = { startedAt: number; endedAt: number };
+type Use = { identifier: string; startedAt: string; endedAt: string };
 
-function findCycles(readings: PowerReading[]) {
+function findCycles(readings: Pick<Reading, 'createdAt' | 'powerActivity'>[]) {
   const cycles: Cycle[] = [];
-  let previousAt: number | undefined;
   for (const reading of readings) {
-    const at = Date.parse(reading.createdAt);
-    const elapsedMilliseconds = Math.min(at - (previousAt ?? at - minuteMilliseconds), longestReadingGapMilliseconds);
-    previousAt = at;
     const activity = reading.powerActivity;
-    if (activity === 'quiet' || (activity == null && reading.powerWatts < activePowerWatts)) continue;
-    const startedAt = at - (activity?.firstAgeSeconds ?? 0) * 1000;
-    const endedAt = at - (activity?.lastAgeSeconds ?? 0) * 1000;
-    const energyWattHours = (reading.powerWatts * elapsedMilliseconds) / (60 * minuteMilliseconds);
+    if (!activity || activity === 'quiet') continue;
+    const at = Date.parse(reading.createdAt);
+    const startedAt = at - activity.firstAgeSeconds * 1000;
+    const endedAt = at - activity.lastAgeSeconds * 1000;
     const lastCycle = cycles.at(-1);
-    if (lastCycle && startedAt - lastCycle.endedAt < cyclePauseMilliseconds) {
+    if (lastCycle && startedAt - lastCycle.endedAt < cyclePauseMilliseconds)
       lastCycle.endedAt = Math.max(lastCycle.endedAt, endedAt);
-      lastCycle.energyWattHours += energyWattHours;
-    } else cycles.push({ startedAt, endedAt, energyWattHours });
+    else cycles.push({ startedAt, endedAt });
   }
   return cycles;
 }
 
-function summarizeCycles(readings: PowerReading[], now: number) {
-  const cycles = findCycles(readings);
-  const lastCycle = cycles.at(-1);
-  const runningCycle = lastCycle && now - lastCycle.endedAt < cyclePauseMilliseconds ? lastCycle : undefined;
-  const finishedCycles = cycles.filter(
-    (cycle) => cycle !== runningCycle && cycle.endedAt - cycle.startedAt >= minimumCycleMilliseconds
-  );
-  return { runningCycle, finishedCycles };
-}
-
-function serializeCycle(cycle: Cycle | undefined) {
-  if (!cycle) return null;
-  return {
-    startedAt: new Date(cycle.startedAt).toISOString(),
-    endedAt: new Date(cycle.endedAt).toISOString(),
-    energyWattHours: cycle.energyWattHours,
-  };
-}
-
 function determineStatus(
   isOnline: boolean,
-  isRunning: boolean,
-  lastFinishedCycle: Cycle | undefined,
+  runningCycle: Cycle | undefined,
+  lastUsedAt: number | undefined,
   now: number
 ): 'offline' | 'running' | 'finished' | 'idle' {
   if (!isOnline) return 'offline';
-  if (isRunning) return 'running';
-  if (lastFinishedCycle && now - lastFinishedCycle.endedAt <= finishedForMilliseconds) return 'finished';
+  if (runningCycle) return 'running';
+  if (lastUsedAt && now - lastUsedAt <= finishedForMilliseconds) return 'finished';
   return 'idle';
 }
 
@@ -72,54 +46,54 @@ export async function listPlugStatuses() {
     with: {
       latestReadings: { columns: { powerWatts: true }, orderBy: { createdAt: 'desc' }, limit: 1 },
       readings: {
-        columns: { createdAt: true, powerWatts: true, powerActivity: true, isOn: true },
-        where: { RAW: (reading) => gte(reading.createdAt, sql`now() - interval '24 hours'`) },
+        columns: { createdAt: true, powerActivity: true },
+        where: {
+          powerActivity: { ne: 'quiet' },
+          RAW: (reading) => gte(reading.createdAt, sql`now() - interval '24 hours'`),
+        },
         orderBy: { createdAt: 'asc' },
       },
     },
   });
   const now = Date.now();
   const plugStatuses = plugs.map((plug) => {
-    const latestReading = plug.readings.at(-1);
-    const isOnline = !!latestReading && now - Date.parse(latestReading.createdAt) <= offlineAfterMilliseconds;
-    const observedAt = latestReading?.powerActivity != null ? Date.parse(latestReading.createdAt) : now;
-    const { runningCycle, finishedCycles } = summarizeCycles(plug.readings, observedAt);
-    const isRunning = isOnline && !!runningCycle;
-    const lastFinishedCycle = finishedCycles.at(-1);
+    const lastReadingAt = plug.lastReadingAt ? Date.parse(plug.lastReadingAt) : undefined;
+    const isOnline = lastReadingAt !== undefined && now - lastReadingAt <= offlineAfterMilliseconds;
+    const cycles = findCycles(plug.readings);
+    const lastCycle = cycles.at(-1);
+    // A cycle counts as over only once a reading confirms the quiet minutes, so missed readings never end it early.
+    const runningCycle =
+      isOnline && lastCycle && lastReadingAt - lastCycle.endedAt < cyclePauseMilliseconds ? lastCycle : undefined;
+    const lastUsedAt = cycles.findLast(
+      (cycle) => cycle !== runningCycle && cycle.endedAt - cycle.startedAt >= minimumCycleMilliseconds
+    )?.endedAt;
     return {
       identifier: plug.identifier,
-      status: determineStatus(isOnline, isRunning, lastFinishedCycle, now),
-      lastReadingAt: plug.lastReadingAt ? new Date(plug.lastReadingAt).toISOString() : null,
+      status: determineStatus(isOnline, runningCycle, lastUsedAt, now),
+      lastReadingAt: lastReadingAt === undefined ? null : new Date(lastReadingAt).toISOString(),
       lastPowerWatts: plug.latestReadings[0]?.powerWatts ?? null,
-      powerWatts: isOnline && latestReading ? latestReading.powerWatts : null,
-      isOn: isOnline && latestReading ? latestReading.isOn : null,
-      currentCycle: isRunning ? serializeCycle(runningCycle) : null,
-      lastFinishedCycle: serializeCycle(lastFinishedCycle),
-      finishedCycleCount: finishedCycles.length,
+      cycleStartedAt: runningCycle ? new Date(runningCycle.startedAt).toISOString() : null,
+      lastUsedAt: lastUsedAt === undefined ? null : new Date(lastUsedAt).toISOString(),
     };
   });
   return { plugs: plugStatuses };
 }
 
 export async function listPlugUsage(ending: string) {
-  const lastDay = new Date(ending);
-  const usesByDate = new Map<string, { identifier: string; startedAt: string; endedAt: string }[]>();
-  const days = Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(lastDay);
+  const days = Array.from({ length: 7 }, (_, index): { date: string; uses: Use[] } => {
+    const date = new Date(ending);
     date.setUTCDate(date.getUTCDate() + index - 6);
-    const day = date.toISOString().slice(0, 10);
-    const uses: { identifier: string; startedAt: string; endedAt: string }[] = [];
-    usesByDate.set(day, uses);
-    return { date: day, uses };
+    return { date: date.toISOString().slice(0, 10), uses: [] };
   });
+  const usesByDate = new Map(days.map((day) => [day.date, day.uses]));
 
   const plugs = await db.query.plugInPlugs.findMany({
     columns: { identifier: true },
     with: {
       readings: {
-        columns: { createdAt: true, powerWatts: true, powerActivity: true },
+        columns: { createdAt: true, powerActivity: true },
         where: {
-          OR: [{ powerWatts: { gte: activePowerWatts } }, { powerActivity: { isNotNull: true } }],
+          powerActivity: { ne: 'quiet' },
           RAW: (reading) =>
             between(
               reading.createdAt,

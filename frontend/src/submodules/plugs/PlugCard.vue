@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PlugStatus } from '../api/api-client';
 
-defineProps<{ plug?: PlugStatus }>();
+defineProps<{ plug?: PlugStatus; label?: string | undefined }>();
 
 const statusLabels = {
   idle: 'available',
@@ -22,23 +22,23 @@ const statusLabels = {
   </article>
   <article v-else class="plug-card column gap-md" :class="`plug-card--${plug.status}`">
     <div class="column items-start gap-sm">
-      <h3 class="display">{{ plug.identifier.replaceAll('-', ' ') }}</h3>
+      <h3 class="display">{{ label ?? plug.identifier.replaceAll('-', ' ') }}</h3>
       <span class="status">✦ {{ statusLabels[plug.status] }}</span>
     </div>
 
     <p class="headline">
-      <template v-if="plug.status === 'running' && plug.currentCycle">
-        started <BaseDate :value="plug.currentCycle.startedAt" />.
+      <template v-if="plug.status === 'running' && plug.cycleStartedAt">
+        started <BaseDate :value="plug.cycleStartedAt" />.
       </template>
-      <template v-else-if="plug.status === 'finished' && plug.lastFinishedCycle">
-        last used <BaseDate :value="plug.lastFinishedCycle.endedAt" />.
+      <template v-else-if="plug.status === 'finished' && plug.lastUsedAt">
+        last used <BaseDate :value="plug.lastUsedAt" />.
       </template>
       <template v-else-if="plug.status === 'offline'">does it exist?</template>
       <template v-else>ready when you are.</template>
     </p>
     <p v-if="plug.lastReadingAt" class="telemetry text-muted">
       updated <BaseDate :value="plug.lastReadingAt" />
-      <template v-if="plug.lastPowerWatts !== null"> · <BasePower :watts="plug.lastPowerWatts" watts-only /> </template>
+      <template v-if="plug.lastPowerWatts !== null"> · <BasePower :watts="plug.lastPowerWatts" /> </template>
     </p>
   </article>
 </template>
@@ -59,10 +59,10 @@ const statusLabels = {
 }
 
 .status {
-  font-size: 11px;
+  font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  padding: 0.2rem 0.6rem;
+  padding: 0.3rem 0.75rem;
   border: 1px solid currentColor;
 }
 

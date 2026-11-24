@@ -1,12 +1,12 @@
 let CONFIG = {
-  identifier: 'tc-house-washer-2',
-  displayName: 'TC House Washer 2',
+  identifier: 'old-house-dryer-1',
+  displayName: 'Old House Dryer 1',
   apiUrl: 'https://fools.alexdaniel.org/api',
   apiToken: 'paste-the-access-token-here',
   telegramBotToken: 'paste-the-bot-token-here',
   telegramChatId: '-1004415267872',
   telegramTopicId: 2,
-  reportSecond: 45,
+  reportSecond: 25,
   checkIntervalSeconds: 1,
   activeWatts: 5,
   availableAfterQuietSeconds: 180,
@@ -32,14 +32,7 @@ let retryTimer = null;
 function loadTelegramMessage() {
   try {
     let saved = JSON.parse(Script.storage.getItem('telegramMessage'));
-    if (
-      saved &&
-      saved.chatId === CONFIG.telegramChatId &&
-      saved.topicId === CONFIG.telegramTopicId &&
-      typeof saved.messageId === 'number' &&
-      saved.messageId > 0 &&
-      saved.messageId % 1 === 0
-    )
+    if (saved && saved.chatId === CONFIG.telegramChatId && saved.topicId === CONFIG.telegramTopicId)
       telegramMessageId = saved.messageId;
   } catch (error) {
     print('Could not read the saved Telegram message ID');

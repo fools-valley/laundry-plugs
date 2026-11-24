@@ -1,4 +1,3 @@
-import '@laundry-plugs/database/src/load-env';
 import { serve } from '@hono/node-server';
 import log from 'loglevel';
 import { z } from 'zod/v4';

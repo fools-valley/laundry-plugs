@@ -19,7 +19,6 @@
     "incremental": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo",
     "types": ["node"],
-    "paths": { "@laundry-plugs/database": ["../database/dist"] },
     "noErrorTruncation": true,
     "composite": true
   },

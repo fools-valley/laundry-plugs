@@ -12,7 +12,6 @@ export {};
 declare module 'vue' {
   export interface GlobalComponents {
     BaseDate: typeof import('./submodules/base/BaseDate.vue')['default']
-    BaseEnergy: typeof import('./submodules/base/BaseEnergy.vue')['default']
     BasePower: typeof import('./submodules/base/BasePower.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

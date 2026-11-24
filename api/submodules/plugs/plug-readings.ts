@@ -29,19 +29,17 @@ const powerActivityHeaderSchema = z.union([
 ]);
 
 export const plugReadingHeadersSchema = z.object({
-  'x-plug-activity': powerActivityHeaderSchema.optional(),
+  'x-plug-activity': powerActivityHeaderSchema,
   'x-telegram-chat-id': z
     .string()
     .regex(/^-100[0-9]+$/)
-    .max(20)
-    .optional(),
-  'x-telegram-topic-id': z.coerce.number().int().positive().max(2147483647).optional(),
+    .max(20),
+  'x-telegram-topic-id': z.coerce.number().int().positive().max(2147483647),
   'x-telegram-message-id': z.coerce.number().int().positive().max(2147483647).optional(),
   'x-telegram-display-name': z
     .string()
     .regex(/^[ -~]+$/)
-    .max(100)
-    .optional(),
+    .max(100),
   'x-telegram-status-restored': z.literal('1').optional(),
 });
 
@@ -80,7 +78,7 @@ export async function recordPlugReading(
     const messageId = readingHeaders['x-telegram-message-id'];
     const displayName = readingHeaders['x-telegram-display-name'];
     const savedMessage = plug.telegramMessage;
-    if (chatId && topicId && messageId && displayName) {
+    if (messageId) {
       const restored = readingHeaders['x-telegram-status-restored'] === '1';
       const sameMessage =
         savedMessage?.chatId === chatId && savedMessage.messageId === messageId && savedMessage.topicId === topicId;

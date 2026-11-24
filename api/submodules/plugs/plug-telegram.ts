@@ -10,7 +10,10 @@ export function startTelegramAvailabilityCheck() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   const topicId = Number(process.env.TELEGRAM_TOPIC_ID);
-  if (!token || !chatId || !Number.isSafeInteger(topicId) || topicId < 1) return () => {};
+  if (!token || !chatId || !Number.isSafeInteger(topicId) || topicId < 1) {
+    log.warn('Telegram offline edits are off: set TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID and TELEGRAM_TOPIC_ID');
+    return () => {};
+  }
 
   const offline = and(
     lt(plugInPlugs.lastReadingAt, sql`now() - ${offlineAfterMilliseconds} * interval '1 millisecond'`),

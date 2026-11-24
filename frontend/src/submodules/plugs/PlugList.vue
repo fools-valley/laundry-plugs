@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/vue-query';
 import { api } from '../api/api-client';
 import PlugCard from './PlugCard.vue';
 import PlugHistory from './PlugHistory.vue';
+import { getPlugLabels } from './plug-labels';
 
 const expectedPlugCount = 6;
 
@@ -16,9 +17,9 @@ const plugStatusesQuery = useQuery({
   },
   refetchInterval: 5_000,
 });
-
-const plugStatuses = computed(() => plugStatusesQuery.data.value);
-const plugs = computed(() => plugStatuses.value?.plugs ?? []);
+const plugs = computed(() => plugStatusesQuery.data.value?.plugs);
+const identifiers = computed(() => plugs.value?.map((plug) => plug.identifier) ?? []);
+const labels = computed(() => getPlugLabels(identifiers.value));
 </script>
 
 <template>
@@ -31,15 +32,15 @@ const plugs = computed(() => plugStatuses.value?.plugs ?? []);
       <div v-if="plugStatusesQuery.isPending.value" class="plug-grid" aria-label="listening for the plugs">
         <PlugCard v-for="index in expectedPlugCount" :key="index" />
       </div>
-      <div v-else-if="plugStatuses && !plugs.length" class="text-muted">
+      <div v-else-if="plugs?.length === 0" class="text-muted">
         nothing here yet. once a plug sends its first reading, it appears here on its own.
       </div>
-      <div v-else-if="plugs.length" class="plug-grid">
-        <PlugCard v-for="plug in plugs" :key="plug.identifier" :plug="plug" />
+      <div v-else-if="plugs" class="plug-grid">
+        <PlugCard v-for="plug in plugs" :key="plug.identifier" :plug="plug" :label="labels.get(plug.identifier)" />
       </div>
     </section>
 
-    <PlugHistory />
+    <PlugHistory :identifiers="identifiers" />
   </div>
 </template>
 

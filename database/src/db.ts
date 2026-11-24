@@ -10,8 +10,6 @@ const client = postgres(connectionString, { max: 10, idle_timeout: 20, max_lifet
 
 export const db = drizzle({ client, schema, relations, logger: process.env.NODE_ENV === 'development' });
 
-export type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
-
 export async function testDatabaseConnection() {
   await db.execute(sql`select 1`);
 }

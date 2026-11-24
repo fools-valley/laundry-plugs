@@ -4,16 +4,17 @@ import { now } from './now';
 
 const props = withDefaults(
   defineProps<{ value: string; mode?: 'relative' | 'time' | 'date-time'; timeZone?: string }>(),
-  { mode: 'relative', timeZone: '' }
+  {
+    mode: 'relative',
+  }
 );
 
 const relativeTimeFormat = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const timeFormat = computed(
-  () => new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: props.timeZone || undefined })
+  () => new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: props.timeZone })
 );
 const absoluteFormat = computed(
-  () =>
-    new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: props.timeZone || undefined })
+  () => new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: props.timeZone })
 );
 const units = [
   { unit: 'day', seconds: 24 * 60 * 60 },

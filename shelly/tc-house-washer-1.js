@@ -32,14 +32,7 @@ let retryTimer = null;
 function loadTelegramMessage() {
   try {
     let saved = JSON.parse(Script.storage.getItem('telegramMessage'));
-    if (
-      saved &&
-      saved.chatId === CONFIG.telegramChatId &&
-      saved.topicId === CONFIG.telegramTopicId &&
-      typeof saved.messageId === 'number' &&
-      saved.messageId > 0 &&
-      saved.messageId % 1 === 0
-    )
+    if (saved && saved.chatId === CONFIG.telegramChatId && saved.topicId === CONFIG.telegramTopicId)
       telegramMessageId = saved.messageId;
   } catch (error) {
     print('Could not read the saved Telegram message ID');

@@ -9,7 +9,6 @@ export default defineConfig(() => ({
     '~@fontsource/eb-garamond/400-italic.css',
     'app.scss',
   ],
-  extras: ['material-icons'],
   build: {
     target: { browser: 'baseline-widely-available', node: 'node22' },
     typescript: { strict: true, vueShim: true },

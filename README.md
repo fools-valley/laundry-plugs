@@ -33,15 +33,16 @@ Revoke one with `UPDATE auth.access_token SET revoked_at = now() WHERE name = 'â
 
 ## API
 
-`POST /api/plugs/:identifier/readings` with `Authorization: Bearer <token>` and a Shelly `Switch.GetStatus` body. A new identifier (lowercase words joined by dashes, up to 64 characters) creates its plug on the first reading. Answers `204`.
+`POST /api/plugs/:identifier/readings` with `Authorization: Bearer <token>` and a Shelly `Switch.GetStatus` body. A new identifier (lowercase words joined by dashes, up to 64 characters) creates its plug on the first reading. `X-Plug-Activity` (`quiet`, or the ages in seconds of the first and last active samples since the previous reading) and the Telegram chat, topic and display name headers are required; `X-Telegram-Message-Id` is added once the plug has a message. Answers `204`.
 
 ```bash
 curl -X POST https://fools.alexdaniel.org/api/plugs/old-house-washer-1/readings \
-  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -H 'X-Plug-Activity: 42,0' \
+  -H 'X-Telegram-Chat-Id: -1004415267872' -H 'X-Telegram-Topic-Id: 2' -H 'X-Telegram-Display-Name: Old House Washer 1' \
   -d '{"output":true,"apower":412.3,"voltage":231.2,"current":1.82,"aenergy":{"total":15234.5},"temperature":{"tC":41.2}}'
 ```
 
-`GET /api/plugs` is public and returns each plug's status and current and last cycle. The browser loads this data after receiving the static page from nginx.
+`GET /api/plugs` is public and returns each plug's status, last reading and power draw, when its current cycle started and when it was last used. The browser loads this data after receiving the static page from nginx.
 
 `GET /api/plugs/usage?ending=YYYY-MM-DD` returns seven days of completed usage ranges through the requested date. Cycles are grouped by the day they ended in mainland Portugal. The website shows daily counts and the selected day's start and end times.
 
@@ -76,10 +77,10 @@ The plugs are Shelly Plug M Gen3. Any Gen2 or newer Shelly plug with a power met
 | ------------------ | ------------------------------ | --------------------- |
 | Old House Washer 1 | `shelly/old-house-washer-1.js` | 05                    |
 | Old House Washer 2 | `shelly/old-house-washer-2.js` | 15                    |
-| Old House Dryer    | `shelly/old-house-dryer.js`    | 25                    |
+| Old House Dryer 1  | `shelly/old-house-dryer-1.js`  | 25                    |
 | TC House Washer 1  | `shelly/tc-house-washer-1.js`  | 35                    |
-| TC House Washer 2  | `shelly/tc-house-washer-2.js`  | 45                    |
-| Mystery Device 1   | `shelly/mystery-device-1.js`   | 55                    |
+| TC House Dryer 1   | `shelly/tc-house-dryer-1.js`   | 45                    |
+| Mystery Machine 1  | `shelly/mystery-machine-1.js`  | 55                    |
 
 Reporting aligns to wall-clock minute slots once the plug clock syncs. Before clock sync the script uses device uptime. Elapsed cycle tracking restarts when the script restarts. An initially quiet plug waits for 3 minutes of observation before showing Available.
 
