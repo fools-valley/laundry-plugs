@@ -118,7 +118,14 @@ function moveWeek(direction: number) {
               time-zone="Europe/Lisbon"
             />
             –
-            <BaseDate :value="use.endedAt" mode="time" time-zone="Europe/Lisbon" />
+            <BaseDate v-if="use.endedAt" :value="use.endedAt" mode="time" time-zone="Europe/Lisbon" />
+            <span v-else class="running-time" role="img" aria-label="still running">
+              <span class="running-time-width" aria-hidden="true">00:00</span>
+              <span class="running-time-dots" aria-hidden="true"
+                ><span class="drum">··</span>:<span class="drum">··</span></span
+              >
+              <q-tooltip>still running</q-tooltip>
+            </span>
           </span>
         </li>
       </ul>
@@ -221,6 +228,42 @@ h3 {
 .usage-time {
   text-align: right;
   white-space: nowrap;
+}
+
+// The dots share a grid cell with an invisible clock time, so a running cycle keeps the width of a finished one.
+.running-time {
+  display: inline-grid;
+
+  > span {
+    grid-area: 1 / 1;
+    text-align: center;
+  }
+}
+
+.running-time-width {
+  visibility: hidden;
+}
+
+.running-time-dots {
+  display: inline-flex;
+  justify-content: center;
+}
+
+.drum {
+  display: inline-block;
+  animation: drum-spin 1.2s linear infinite;
+}
+
+@keyframes drum-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drum {
+    animation: none;
+  }
 }
 
 @media (max-width: $breakpoint-xs-max) {

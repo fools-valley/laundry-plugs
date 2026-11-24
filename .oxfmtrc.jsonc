@@ -12,5 +12,5 @@
   "endOfLine": "lf",
   "embeddedLanguageFormatting": "auto",
   "singleAttributePerLine": false,
-  "ignorePatterns": ["database/drizzle/**"],
+  "ignorePatterns": ["database/drizzle/**", "frontend/src/components.d.ts"],
 }

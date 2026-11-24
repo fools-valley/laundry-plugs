@@ -9,7 +9,7 @@ const finishedForMilliseconds = 5 * 60 * minuteMilliseconds;
 const usageDayFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', dateStyle: 'short' });
 
 type Cycle = { startedAt: number; endedAt: number; energyWattHours: number };
-type Use = { identifier: string; startedAt: string; endedAt: string; energyWattHours: number };
+type Use = { identifier: string; startedAt: string; endedAt: string | null; energyWattHours: number };
 type PlugEnergy = { identifier: string; energyWattHours: number };
 
 function findCycles(readings: (Pick<Reading, 'createdAt' | 'powerActivity'> & { energyWattHours?: number })[]) {
@@ -150,13 +150,14 @@ export async function listPlugUsage(ending: string) {
 
   const now = Date.now();
   for (const [identifier, readings] of readingsByIdentifier) {
-    for (const cycle of findCycles(readings)) {
-      if (cycle.endedAt - cycle.startedAt < minimumCycleMilliseconds || now - cycle.endedAt < cyclePauseMilliseconds)
-        continue;
+    const cycles = findCycles(readings);
+    for (const cycle of cycles) {
+      const isRunning = cycle === cycles.at(-1) && now - cycle.endedAt < cyclePauseMilliseconds;
+      if (!isRunning && cycle.endedAt - cycle.startedAt < minimumCycleMilliseconds) continue;
       daysByDate.get(usageDayFormat.format(cycle.endedAt))?.uses.push({
         identifier,
         startedAt: new Date(cycle.startedAt).toISOString(),
-        endedAt: new Date(cycle.endedAt).toISOString(),
+        endedAt: isRunning ? null : new Date(cycle.endedAt).toISOString(),
         energyWattHours: cycle.energyWattHours,
       });
     }
