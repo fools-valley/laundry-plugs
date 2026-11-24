@@ -1,6 +1,6 @@
 # Laundry Plugs
 
-Is the machine free? Shelly smart plugs under the washers and dryers at [fools' valley](https://foolsvalley.com/) report their power draw every minute, and a small page shows which machines are free, running or unknown.
+Is the machine free? Shelly smart plugs under the washers and dryers at [fools' valley](https://foolsvalley.com/) report their power draw every minute, and a small page shows which machines are available, in use or unavailable.
 
 - `database/`: Drizzle schema and migrations (PostgreSQL)
 - `api/`: Hono API that receives plug readings and serves plug statuses
@@ -47,13 +47,13 @@ curl -X POST https://fools.alexdaniel.org/api/plugs/old-house-washer-1/readings 
 
 ## Telegram
 
-Each plug posts one status message directly as [@FoolsLaundryBot](https://t.me/FoolsLaundryBot) and edits it in place. The default destination is the private test topic.
+Each plug reserves one Telegram message with just its display name, saves the message ID, and edits that message in place when its status is ready. The default destination is the private test topic.
 
 - 🔴 Old House Washer 1 · In use (for 3 minutes)
 - 🟢 Old House Washer 1 · Available
 - ⚪ Old House Washer 1 · Unavailable
 
-The plug samples power every second. Any sample of 5 W or more counts as activity, and every spike restarts the quiet timer. The machine becomes available after 3 minutes continuously below 5 W. Each minute the plug sends the first and last active samples in that reporting interval as ages in seconds, alongside the unmodified switch status. The website uses those samples to detect activity between reports. The in-use time is elapsed from the first active sample and refreshes about every 5 minutes. The history log omits runs shorter than 3 minutes.
+The plug samples power every second. Any sample of 5 W or more counts as activity, and every spike restarts the quiet timer. The machine becomes available after 3 minutes continuously below 5 W. Each minute the plug sends the first and last active samples in that reporting interval as ages in seconds, alongside the unmodified switch status. The website uses those samples to detect activity between reports. A cycle start updates the Telegram message and sends an extra reading within a second, so the website, which refreshes every 5 seconds, shows it right away. Becoming available waits for 3 quiet minutes, because the machine may be soaking; Telegram then updates on the next minute tick. The in-use time is elapsed from the first active sample and refreshes every minute. The history log omits runs shorter than 3 minutes.
 
 The plug sends the full switch status to the API every minute. After Telegram confirms the initial message, the next reading carries its chat, topic and message IDs and machine name in HTTP headers. The API stores that reference and checks once a minute for plugs that have missed more than five minutes of readings. It edits the tracked message to Unavailable once, then tells the plug to restore its own status when reporting resumes. The plug stores its Telegram message ID, chat and topic in persistent script storage and reuses that message after reboot. Telegram updates run independently of whether the reading reaches the API. When reporting resumes, the API can flag that it marked the saved message Unavailable so the plug refreshes it. The updated script may post a new status line on first run because earlier versions stored the ID only on the server.
 

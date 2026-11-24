@@ -19,8 +19,6 @@ let firstReadingAt = null;
 let telegramMessageId = null;
 let telegramUnavailable = false;
 let lastTelegramText = null;
-let lastTelegramInterval = null;
-let lastTelegramCycleStartedAt = null;
 let telegramStatusRestored = false;
 let telegramRequestPending = false;
 let readingPending = false;
@@ -122,33 +120,23 @@ function reportReading() {
 
 function updateTelegramStatus() {
   if (firstReadingAt === null || telegramRequestPending) return;
+  let reserving = telegramMessageId === null;
   let unavailable = telegramUnavailable;
   let now = Shelly.getComponentStatus('sys').uptime;
   let text = '🟢 ' + CONFIG.displayName + ' · Available';
-  let elapsedInterval = null;
-  let cycleStartedAt = null;
   if (cycle !== null) {
-    cycleStartedAt = cycle.startedAt;
     let elapsedMinutes = Math.floor((now - cycle.startedAt) / 60);
-    elapsedInterval = Math.floor(elapsedMinutes / 5);
     text = '🔴 ' + CONFIG.displayName + ' · In use';
     if (elapsedMinutes === 0) text += ' (for less than a minute)';
     else text += ' (for ' + elapsedMinutes + (elapsedMinutes === 1 ? ' minute)' : ' minutes)');
-  } else if (lastTelegramText === null && now - firstReadingAt < CONFIG.availableAfterQuietSeconds) {
+  } else if (!reserving && lastTelegramText === null && now - firstReadingAt < CONFIG.availableAfterQuietSeconds) {
     return;
   }
-  if (
-    !unavailable &&
-    lastTelegramText !== null &&
-    elapsedInterval === lastTelegramInterval &&
-    cycleStartedAt === lastTelegramCycleStartedAt &&
-    telegramMessageId !== null
-  )
-    return;
+  if (!unavailable && !reserving && text === lastTelegramText) return;
 
-  let parameters = { chat_id: CONFIG.telegramChatId, text: text };
+  let parameters = { chat_id: CONFIG.telegramChatId, text: reserving ? CONFIG.displayName : text };
   let method = 'sendMessage';
-  if (telegramMessageId === null) parameters.message_thread_id = CONFIG.telegramTopicId;
+  if (reserving) parameters.message_thread_id = CONFIG.telegramTopicId;
   else {
     method = 'editMessageText';
     parameters.message_id = telegramMessageId;
@@ -198,9 +186,8 @@ function updateTelegramStatus() {
         print('Telegram rejected the message with HTTP ' + result.code);
         return;
       }
+      if (reserving) return;
       lastTelegramText = text;
-      lastTelegramInterval = elapsedInterval;
-      lastTelegramCycleStartedAt = cycleStartedAt;
       if (unavailable) {
         telegramUnavailable = false;
         telegramStatusRestored = true;
@@ -223,7 +210,12 @@ function observePower(watts, now) {
 function checkPower() {
   let status = Shelly.getComponentStatus('switch', 0);
   if (!status || typeof status.apower !== 'number') return;
+  let wasInUse = cycle !== null;
   observePower(status.apower, Shelly.getComponentStatus('sys').uptime);
+  if (!wasInUse && cycle !== null) {
+    updateTelegramStatus();
+    reportReading();
+  }
 }
 
 function scheduleReading() {

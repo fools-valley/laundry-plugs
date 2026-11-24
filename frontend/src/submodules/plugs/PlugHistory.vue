@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useQuery } from '@tanstack/vue-query';
+import { keepPreviousData, useQuery } from '@tanstack/vue-query';
 import { computed, ref } from 'vue';
-import { api } from '../api/api-client';
+import { api, type UsageDay } from '../api/api-client';
 import { now } from '../base/now';
 import { formatPlugName } from './plug-name';
 
@@ -17,17 +17,25 @@ const ending = computed(() => {
   return day.toISOString().slice(0, 10);
 });
 
-const { data, isPending, isError } = useQuery({
+const { data, isPending, isPlaceholderData, isError } = useQuery({
   queryKey: ['plug-usage', ending] as const,
   queryFn: async ({ queryKey, signal }) => {
     const response = await api.plugs.usage.$get({ query: { ending: queryKey[1] } }, { init: { signal } });
     if (!response.ok) throw new Error(`Usage request failed with ${response.status}`);
     return response.json();
   },
+  placeholderData: keepPreviousData,
   refetchInterval: computed(() => (weekOffset.value === 0 ? 60_000 : false)),
 });
 
-const days = computed(() => data.value?.days ?? []);
+const emptyWeek = computed(() =>
+  Array.from({ length: 7 }, (_, index): UsageDay => {
+    const day = new Date(ending.value);
+    day.setUTCDate(day.getUTCDate() + index - 6);
+    return { date: day.toISOString().slice(0, 10), uses: [] };
+  })
+);
+const days = computed(() => data.value?.days ?? emptyWeek.value);
 const selectedDay = computed(
   () =>
     days.value.find((day) => day.date === selectedDate.value) ??
@@ -57,14 +65,14 @@ function moveWeek(direction: number) {
     </div>
 
     <p v-if="isError" role="status">could not load usage history.</p>
-    <p v-else-if="isPending" role="status">loading usage history…</p>
-    <template v-else-if="selectedDay">
+    <div v-else-if="selectedDay" :class="{ stale: isPlaceholderData }" :aria-busy="isPending || isPlaceholderData">
       <div class="days" role="group" aria-label="cycles per day">
         <button
           v-for="day in days"
           :key="day.date"
           class="day"
           type="button"
+          :disabled="isPending"
           :aria-pressed="day.date === selectedDay.date"
           :aria-label="`${dayFormat.format(new Date(day.date))}, ${day.uses.length} ${day.uses.length === 1 ? 'cycle' : 'cycles'}`"
           @click="selectedDate = day.date"
@@ -73,11 +81,13 @@ function moveWeek(direction: number) {
           <span class="bar-track" aria-hidden="true">
             <span class="bar" :style="{ height: `${(day.uses.length / peakUses) * 100}%` }" />
           </span>
-          <span>{{ day.uses.length }}</span>
+          <span :class="{ skeleton: isPending }">{{ day.uses.length }}</span>
         </button>
       </div>
-      <h3 class="display">{{ dayFormat.format(new Date(selectedDay.date)).toLowerCase() }}</h3>
-      <p v-if="!selectedDay.uses.length">no completed cycles recorded.</p>
+      <h3 class="display">
+        <span :class="{ skeleton: isPending }">{{ dayFormat.format(new Date(selectedDay.date)).toLowerCase() }}</span>
+      </h3>
+      <p v-if="!selectedDay.uses.length"><span :class="{ skeleton: isPending }">no completed cycles recorded.</span></p>
       <ul v-else class="usage-log">
         <li v-for="use in selectedDay.uses" :key="`${use.identifier}-${use.startedAt}`">
           <span>{{ formatPlugName(use.identifier) }}</span>
@@ -92,7 +102,7 @@ function moveWeek(direction: number) {
           </span>
         </li>
       </ul>
-    </template>
+    </div>
   </section>
 </template>
 
@@ -111,6 +121,10 @@ h2 {
 h3 {
   font-size: 1.9rem;
   margin-top: 1.5rem;
+}
+
+.stale {
+  opacity: 0.5;
 }
 
 .days {

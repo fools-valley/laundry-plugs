@@ -5,6 +5,8 @@ import { api } from '../api/api-client';
 import PlugCard from './PlugCard.vue';
 import PlugHistory from './PlugHistory.vue';
 
+const expectedPlugCount = 6;
+
 const plugStatusesQuery = useQuery({
   queryKey: ['plugs'],
   queryFn: async () => {
@@ -12,7 +14,7 @@ const plugStatusesQuery = useQuery({
     if (!response.ok) throw new Error(`Plug statuses request failed with ${response.status}`);
     return response.json();
   },
-  refetchInterval: 30_000,
+  refetchInterval: 5_000,
 });
 
 const plugStatuses = computed(() => plugStatusesQuery.data.value);
@@ -26,9 +28,8 @@ const plugs = computed(() => plugStatuses.value?.plugs ?? []);
       <div v-if="plugStatusesQuery.isError.value" class="error q-mb-lg">
         the plugs could not be reached. we will keep trying.
       </div>
-      <div v-if="plugStatusesQuery.isPending.value" class="row items-center gap-sm text-muted">
-        <q-spinner-dots color="primary" size="24px" />
-        listening for the plugs
+      <div v-if="plugStatusesQuery.isPending.value" class="plug-grid" aria-label="listening for the plugs">
+        <PlugCard v-for="index in expectedPlugCount" :key="index" />
       </div>
       <div v-else-if="plugStatuses && !plugs.length" class="text-muted">
         nothing here yet. once a plug sends its first reading, it appears here on its own.

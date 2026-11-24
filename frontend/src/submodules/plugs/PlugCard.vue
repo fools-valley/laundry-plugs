@@ -3,18 +3,28 @@ import { computed } from 'vue';
 import type { PlugStatus } from '../api/api-client';
 import { formatPlugName } from './plug-name';
 
-const props = defineProps<{ plug: PlugStatus }>();
+const props = defineProps<{ plug?: PlugStatus }>();
 
-const statusLabels = { idle: 'free', running: 'running', finished: 'free', offline: 'unknown' } satisfies Record<
-  PlugStatus['status'],
-  string
->;
+const statusLabels = {
+  idle: 'available',
+  running: 'in use',
+  finished: 'available',
+  offline: 'unavailable',
+} satisfies Record<PlugStatus['status'], string>;
 
-const name = computed(() => formatPlugName(props.plug.identifier));
+const name = computed(() => (props.plug ? formatPlugName(props.plug.identifier) : ''));
 </script>
 
 <template>
-  <article class="plug-card column gap-md" :class="`plug-card--${plug.status}`">
+  <article v-if="!plug" class="plug-card column gap-md" aria-busy="true">
+    <div class="column items-start gap-sm">
+      <h3 class="display"><span class="skeleton">old house washer</span></h3>
+      <span class="status skeleton">✦ available</span>
+    </div>
+    <p class="headline"><span class="skeleton">ready when you are.</span></p>
+    <p class="telemetry"><span class="skeleton">updated just now · 0 W</span></p>
+  </article>
+  <article v-else class="plug-card column gap-md" :class="`plug-card--${plug.status}`">
     <div class="column items-start gap-sm">
       <h3 class="display">{{ name }}</h3>
       <span class="status">✦ {{ statusLabels[plug.status] }}</span>
@@ -32,9 +42,7 @@ const name = computed(() => formatPlugName(props.plug.identifier));
     </p>
     <p v-if="plug.lastReadingAt" class="telemetry text-muted">
       updated <BaseDate :value="plug.lastReadingAt" />
-      <template v-if="plug.lastPowerWatts !== null">
-        · last draw <BasePower :watts="plug.lastPowerWatts" watts-only />
-      </template>
+      <template v-if="plug.lastPowerWatts !== null"> · <BasePower :watts="plug.lastPowerWatts" watts-only /> </template>
     </p>
   </article>
 </template>

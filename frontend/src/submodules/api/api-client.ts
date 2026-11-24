@@ -4,3 +4,4 @@ import type { AppType } from '@laundry-plugs/api/submodules/main/app';
 export const api = hc<AppType>('/api');
 
 export type PlugStatus = InferResponseType<typeof api.plugs.$get, 200>['plugs'][number];
+export type UsageDay = InferResponseType<typeof api.plugs.usage.$get, 200>['days'][number];
