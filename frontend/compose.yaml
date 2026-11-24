@@ -13,7 +13,7 @@ services:
         delay: 1s
         window: 120s
       labels:
-        caddy: fools.alexdaniel.org
+        caddy: fools.alexdaniel.org, laundry.foolsvalley.com
         caddy_ingress_network: caddy
         caddy.tls: alex.jakimenko+caddy@gmail.com
         caddy.encode: zstd gzip

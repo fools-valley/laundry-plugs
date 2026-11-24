@@ -54,7 +54,7 @@ pnpm -C database exec drizzle-kit generate --name 'migration-name'
 
 ## Deployment
 
-Served at `https://fools.alexdaniel.org/`. The plugs are Shelly Plug M Gen3 (scripts call the `HTTP.Request` RPC; requests are limited to 8 KB and 15 headers). Docker Swarm on `postmodern.alexdaniel.org` behind Caddy Docker Proxy on the external `caddy` overlay, images in the `postmodern.alexdaniel.org` registry, all wired in `.github/workflows/workflow.yaml`. Frontend serves `/`, the API serves `/api/` (prefix stripped). Every push to `main` deploys; there is no separate release environment. Do not deploy, push images or change DNS unless asked.
+Served at `https://laundry.foolsvalley.com/` and `https://fools.alexdaniel.org/` (both names on the same Caddy site; the plugs post to the latter). The plugs are Shelly Plug M Gen3 (scripts call the `HTTP.Request` RPC; requests are limited to 8 KB and 15 headers). Docker Swarm on `postmodern.alexdaniel.org` behind Caddy Docker Proxy on the external `caddy` overlay, images in the `postmodern.alexdaniel.org` registry, all wired in `.github/workflows/workflow.yaml`. Frontend serves `/`, the API serves `/api/` (prefix stripped). Every push to `main` deploys; there is no separate release environment. Do not deploy, push images or change DNS unless asked.
 
 ## Git
 
