@@ -52,19 +52,9 @@ export async function recordPlugReading(
   readingHeaders: z.infer<typeof plugReadingHeadersSchema>
 ) {
   return db.transaction(async (transaction) => {
-    const washerIdentifier = identifier.replace(/^((?:old|tc)-house)-washing-machine-([12])$/, '$1-washer-$2');
-    const previousIdentifier = washerIdentifier.replace(/^((?:old|tc)-house)-washer-([12])$/, '$1-washing-machine-$2');
-    const previousPlug =
-      previousIdentifier === washerIdentifier
-        ? undefined
-        : await transaction.query.plugInPlugs.findFirst({
-            columns: { identifier: true },
-            where: { identifier: previousIdentifier },
-          });
-    const storedIdentifier = previousPlug?.identifier ?? washerIdentifier;
     const [plug] = await transaction
       .insert(plugInPlugs)
-      .values({ identifier: storedIdentifier, createdByAccessTokenId: accessToken.id, lastReadingAt: sql`now()` })
+      .values({ identifier, createdByAccessTokenId: accessToken.id, lastReadingAt: sql`now()` })
       .onConflictDoUpdate({ target: plugInPlugs.identifier, set: { lastReadingAt: sql`now()` } })
       .returning({
         id: plugInPlugs.id,

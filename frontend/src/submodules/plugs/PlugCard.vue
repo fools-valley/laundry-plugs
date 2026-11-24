@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { PlugStatus } from '../api/api-client';
-import { formatPlugName } from './plug-name';
 
-const props = defineProps<{ plug?: PlugStatus }>();
+defineProps<{ plug?: PlugStatus }>();
 
 const statusLabels = {
   idle: 'available',
@@ -11,8 +9,6 @@ const statusLabels = {
   finished: 'available',
   offline: 'unavailable',
 } satisfies Record<PlugStatus['status'], string>;
-
-const name = computed(() => (props.plug ? formatPlugName(props.plug.identifier) : ''));
 </script>
 
 <template>
@@ -26,7 +22,7 @@ const name = computed(() => (props.plug ? formatPlugName(props.plug.identifier) 
   </article>
   <article v-else class="plug-card column gap-md" :class="`plug-card--${plug.status}`">
     <div class="column items-start gap-sm">
-      <h3 class="display">{{ name }}</h3>
+      <h3 class="display">{{ plug.identifier.replaceAll('-', ' ') }}</h3>
       <span class="status">✦ {{ statusLabels[plug.status] }}</span>
     </div>
 

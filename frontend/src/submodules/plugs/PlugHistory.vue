@@ -3,7 +3,6 @@ import { keepPreviousData, useQuery } from '@tanstack/vue-query';
 import { computed, ref } from 'vue';
 import { api, type UsageDay } from '../api/api-client';
 import { now } from '../base/now';
-import { formatPlugName } from './plug-name';
 
 const dateKeyFormat = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Lisbon', dateStyle: 'short' });
 const weekdayFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: 'UTC' });
@@ -90,7 +89,7 @@ function moveWeek(direction: number) {
       <p v-if="!selectedDay.uses.length"><span :class="{ skeleton: isPending }">no completed cycles recorded.</span></p>
       <ul v-else class="usage-log">
         <li v-for="use in selectedDay.uses" :key="`${use.identifier}-${use.startedAt}`">
-          <span>{{ formatPlugName(use.identifier) }}</span>
+          <span>{{ use.identifier.replaceAll('-', ' ') }}</span>
           <span class="usage-time">
             <BaseDate
               :value="use.startedAt"

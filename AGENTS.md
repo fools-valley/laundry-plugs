@@ -18,7 +18,7 @@ laundry-plugs/
 
 ## Domain Rules
 
-- **Plugs create themselves.** `POST /plugs/:identifier/readings` upserts the plug by identifier and inserts the reading in one transaction. Identifiers are lowercase words joined by dashes (`old-house-washer-1`); the frontend displays them with spaces. Washer identifiers with the former spelling remain accepted and resolve to the existing plug.
+- **Plugs create themselves.** `POST /plugs/:identifier/readings` upserts the plug by identifier and inserts the reading in one transaction. Identifiers are lowercase words joined by dashes (`old-house-washer-1`); the frontend displays them with spaces.
 - **Readings use the Shelly `Switch.GetStatus` shape** (`apower`, `voltage`, `current`, `output`, `aenergy.total`, `temperature.tC`). Store the known fields in columns and the whole status in `payload`.
 - **Access tokens are created by hand in the database** (see README) and stored only as SHA-256 hex in `auth.access_token.token_hash`. Never store or log plain tokens. Revoke with `revoked_at`. Requests send `Authorization: Bearer <token>`; failures are a bare 401.
 - **Reading plug statuses is public.** Only ingestion requires a token.
