@@ -10,6 +10,8 @@ let CONFIG = {
   checkIntervalSeconds: 1,
   activeWatts: 5,
   availableAfterQuietSeconds: 180,
+  retrySeconds: 10,
+  finishedReportDelaySeconds: 5,
 };
 
 let cycle = null;
@@ -22,6 +24,8 @@ let lastTelegramText = null;
 let telegramStatusRestored = false;
 let telegramRequestPending = false;
 let readingPending = false;
+let readingQueued = false;
+let retryTimer = null;
 
 function loadTelegramMessage() {
   try {
@@ -59,8 +63,19 @@ function rememberTelegramMessage(messageId) {
   }
 }
 
+function retryReading() {
+  if (retryTimer !== null) return;
+  retryTimer = Timer.set(CONFIG.retrySeconds * 1000, false, function () {
+    retryTimer = null;
+    reportReading();
+  });
+}
+
 function reportReading() {
-  if (readingPending) return;
+  if (readingPending) {
+    readingQueued = true;
+    return;
+  }
   let status = Shelly.getComponentStatus('switch', 0);
   if (!status || typeof status.apower !== 'number') {
     firstActiveAt = null;
@@ -72,7 +87,8 @@ function reportReading() {
   let headers = {
     'Content-Type': 'application/json',
     Authorization: 'Bearer ' + CONFIG.apiToken,
-    'X-Plug-Activity': firstActiveAt === null ? 'quiet' : now - firstActiveAt + ',' + (now - lastActiveAt),
+    'X-Plug-Activity':
+      firstActiveAt === null ? 'quiet' : Math.min(now - firstActiveAt, 999) + ',' + Math.min(now - lastActiveAt, 999),
     'X-Telegram-Chat-Id': CONFIG.telegramChatId,
     'X-Telegram-Topic-Id': String(CONFIG.telegramTopicId),
     'X-Telegram-Display-Name': CONFIG.displayName,
@@ -82,6 +98,8 @@ function reportReading() {
   if (telegramMessageId !== null) headers['X-Telegram-Message-Id'] = String(telegramMessageId);
   if (telegramStatusRestored) headers['X-Telegram-Status-Restored'] = '1';
 
+  let reportedFirstActiveAt = firstActiveAt;
+  let reportedLastActiveAt = lastActiveAt;
   firstActiveAt = null;
   lastActiveAt = null;
   readingPending = true;
@@ -96,9 +114,18 @@ function reportReading() {
     },
     function (result, errorCode, errorMessage) {
       readingPending = false;
-      if (errorCode !== 0) {
-        print('Reading was not sent: ' + errorMessage);
+      if (errorCode !== 0 || result.code >= 500) {
+        print(errorCode !== 0 ? 'Reading was not sent: ' + errorMessage : 'Reading failed with HTTP ' + result.code);
+        if (reportedFirstActiveAt !== null) {
+          firstActiveAt = reportedFirstActiveAt;
+          if (lastActiveAt === null) lastActiveAt = reportedLastActiveAt;
+        }
+        retryReading();
         return;
+      }
+      if (readingQueued) {
+        readingQueued = false;
+        reportReading();
       }
       if (result.code !== 204) {
         print('Reading was rejected with HTTP ' + result.code);
@@ -114,6 +141,7 @@ function reportReading() {
           if (key.toLowerCase() === 'x-telegram-unavailable' && result.headers[key] === '1') telegramUnavailable = true;
         }
       }
+      updateTelegramStatus();
     }
   );
 }
@@ -186,12 +214,14 @@ function updateTelegramStatus() {
         print('Telegram rejected the message with HTTP ' + result.code);
         return;
       }
-      if (reserving) return;
-      lastTelegramText = text;
-      if (unavailable) {
-        telegramUnavailable = false;
-        telegramStatusRestored = true;
+      if (!reserving) {
+        lastTelegramText = text;
+        if (unavailable) {
+          telegramUnavailable = false;
+          telegramStatusRestored = true;
+        }
       }
+      updateTelegramStatus();
     }
   );
 }
@@ -212,10 +242,11 @@ function checkPower() {
   if (!status || typeof status.apower !== 'number') return;
   let wasInUse = cycle !== null;
   observePower(status.apower, Shelly.getComponentStatus('sys').uptime);
-  if (!wasInUse && cycle !== null) {
-    updateTelegramStatus();
-    reportReading();
-  }
+  if (wasInUse === (cycle !== null)) return;
+  updateTelegramStatus();
+  // The API times the quiet minutes by when readings arrive, so give it a margin to reach the same verdict.
+  if (cycle !== null) reportReading();
+  else Timer.set(CONFIG.finishedReportDelaySeconds * 1000, false, reportReading);
 }
 
 function scheduleReading() {
@@ -233,4 +264,5 @@ function scheduleReading() {
 loadTelegramMessage();
 Timer.set(CONFIG.checkIntervalSeconds * 1000, true, checkPower);
 checkPower();
+reportReading();
 scheduleReading();
