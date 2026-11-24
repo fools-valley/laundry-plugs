@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useQuery } from '@tanstack/vue-query';
+import { computed, watch } from 'vue';
+import { useQuery, useQueryClient } from '@tanstack/vue-query';
 import { api } from '../api/api-client';
 import PlugCard from './PlugCard.vue';
 import PlugHistory from './PlugHistory.vue';
@@ -20,6 +20,12 @@ const plugStatusesQuery = useQuery({
 const plugs = computed(() => plugStatusesQuery.data.value?.plugs);
 const identifiers = computed(() => plugs.value?.map((plug) => plug.identifier) ?? []);
 const labels = computed(() => getPlugLabels(identifiers.value));
+
+const queryClient = useQueryClient();
+const statuses = computed(() => plugs.value?.map((plug) => `${plug.identifier}:${plug.status}`).join(' ') ?? '');
+watch(statuses, (current, previous) => {
+  if (previous) void queryClient.invalidateQueries({ queryKey: ['plug-usage'] });
+});
 </script>
 
 <template>
