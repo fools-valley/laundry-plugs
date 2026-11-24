@@ -12,6 +12,7 @@ let CONFIG = {
   availableAfterQuietSeconds: 180,
   retrySeconds: 10,
   finishedReportDelaySeconds: 5,
+  telegramCheckSeconds: 300,
 };
 
 let cycle = null;
@@ -21,6 +22,7 @@ let firstReadingAt = null;
 let telegramMessageId = null;
 let telegramUnavailable = false;
 let lastTelegramText = null;
+let lastTelegramCheckAt = null;
 let telegramStatusRestored = false;
 let telegramRequestPending = false;
 let readingPending = false;
@@ -47,6 +49,7 @@ function loadTelegramMessage() {
 function rememberTelegramMessage(messageId) {
   if (messageId === telegramMessageId) return;
   telegramMessageId = messageId;
+  lastTelegramText = null;
   try {
     if (messageId === null) Script.storage.removeItem('telegramMessage');
     else
@@ -160,7 +163,14 @@ function updateTelegramStatus() {
   } else if (!reserving && lastTelegramText === null && now - firstReadingAt < CONFIG.availableAfterQuietSeconds) {
     return;
   }
-  if (!unavailable && !reserving && text === lastTelegramText) return;
+  // Re-sending unchanged text is the only way to learn that someone deleted the message.
+  if (
+    !unavailable &&
+    !reserving &&
+    text === lastTelegramText &&
+    now - lastTelegramCheckAt < CONFIG.telegramCheckSeconds
+  )
+    return;
 
   let parameters = { chat_id: CONFIG.telegramChatId, text: reserving ? CONFIG.displayName : text };
   let method = 'sendMessage';
@@ -193,27 +203,22 @@ function updateTelegramStatus() {
         print('Telegram returned an unreadable response with HTTP ' + result.code);
         return;
       }
+      let description = (response && response.description) || '';
       if (response && response.ok && response.result && response.result.message_id > 0) {
         rememberTelegramMessage(response.result.message_id);
-      } else if (
-        !(
-          result.code === 400 &&
-          response &&
-          response.description &&
-          response.description.indexOf('message is not modified') >= 0
-        )
-      ) {
+      } else if (!(result.code === 400 && description.indexOf('message is not modified') >= 0)) {
+        print('Telegram rejected the message with HTTP ' + result.code + ': ' + description);
         if (
+          !reserving &&
           result.code === 400 &&
-          response &&
-          response.description &&
-          response.description.indexOf('message to edit not found') >= 0
+          (description.indexOf('message to edit not found') >= 0 || description.indexOf('MESSAGE_ID_INVALID') >= 0)
         ) {
           rememberTelegramMessage(null);
+          updateTelegramStatus();
         }
-        print('Telegram rejected the message with HTTP ' + result.code);
         return;
       }
+      lastTelegramCheckAt = now;
       if (!reserving) {
         lastTelegramText = text;
         if (unavailable) {

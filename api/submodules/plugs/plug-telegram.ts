@@ -43,7 +43,9 @@ export function startTelegramAvailabilityCheck() {
           });
           const result = telegramResponseSchema.parse(await response.json());
           const alreadyUnavailable = response.status === 400 && result.description?.includes('message is not modified');
-          const deleted = response.status === 400 && result.description?.includes('message to edit not found');
+          const deleted =
+            response.status === 400 &&
+            ['message to edit not found', 'MESSAGE_ID_INVALID'].some((reason) => result.description?.includes(reason));
           if (!result.ok && !alreadyUnavailable && !deleted)
             throw new Error(`Telegram returned HTTP ${response.status}`);
           await transaction
