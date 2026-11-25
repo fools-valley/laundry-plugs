@@ -9,6 +9,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
+import { isNull } from 'drizzle-orm';
 import { baseColumns, baseColumnsWithoutUpdatedAt } from '../columns';
 import { accessTokenInAuth } from './access-tokens';
 
@@ -55,6 +56,22 @@ export const readingInPlugs = plugsSchema.table(
     payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
   },
   (table) => [index().on(table.createdAt), index().on(table.plugId, table.createdAt)]
+);
+
+export const finishNotificationInPlugs = plugsSchema.table(
+  'finish_notification',
+  {
+    ...baseColumns,
+    plugId: uuid('plug_id')
+      .notNull()
+      .references(() => plugInPlugs.id),
+    telegramChatId: text('telegram_chat_id').notNull(),
+    notifiedAt: timestamp('notified_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [
+    index().on(table.createdAt),
+    uniqueIndex().on(table.plugId, table.telegramChatId).where(isNull(table.notifiedAt)),
+  ]
 );
 
 export type Plug = typeof plugInPlugs.$inferSelect;

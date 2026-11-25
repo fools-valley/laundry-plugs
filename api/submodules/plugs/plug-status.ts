@@ -2,7 +2,7 @@ import { between, eq, gte, ne, sql } from 'drizzle-orm';
 import { db, plugInPlugs, readingInPlugs, type Reading } from '@laundry-plugs/database/src/db';
 
 const minuteMilliseconds = 60 * 1000;
-const cyclePauseMilliseconds = 3 * minuteMilliseconds;
+export const cyclePauseMilliseconds = 3 * minuteMilliseconds;
 const minimumCycleMilliseconds = 3 * minuteMilliseconds;
 export const offlineAfterMilliseconds = 5 * minuteMilliseconds;
 const finishedForMilliseconds = 5 * 60 * minuteMilliseconds;

@@ -4,13 +4,35 @@ import log from 'loglevel';
 import { z } from 'zod/v4';
 import { offlineAfterMilliseconds } from './plug-status';
 
-const telegramResponseSchema = z.object({ ok: z.boolean(), description: z.string().optional() });
+const telegramResponseSchema = z.object({ ok: z.boolean(), description: z.string().default(''), result: z.unknown() });
+
+export class TelegramError extends Error {
+  constructor(
+    readonly status: number,
+    readonly description: string
+  ) {
+    super(`Telegram returned HTTP ${status}: ${description}`);
+  }
+}
+
+export async function callTelegram(method: string, parameters: Record<string, unknown>, timeoutMilliseconds = 5000) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new Error('TELEGRAM_BOT_TOKEN is not set');
+  const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(parameters),
+    signal: AbortSignal.timeout(timeoutMilliseconds),
+  });
+  const body = telegramResponseSchema.parse(await response.json());
+  if (!body.ok) throw new TelegramError(response.status, body.description);
+  return body.result;
+}
 
 export function startTelegramAvailabilityCheck() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   const topicId = Number(process.env.TELEGRAM_TOPIC_ID);
-  if (!token || !chatId || !Number.isSafeInteger(topicId) || topicId < 1) {
+  if (!process.env.TELEGRAM_BOT_TOKEN || !chatId || !Number.isSafeInteger(topicId) || topicId < 1) {
     log.warn('Telegram offline edits are off: set TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID and TELEGRAM_TOPIC_ID');
     return () => {};
   }
@@ -34,23 +56,20 @@ export function startTelegramAvailabilityCheck() {
           const message = plug?.message;
           if (!message || message.chatId !== chatId || message.topicId !== topicId) return;
 
-          const response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+          let deleted = false;
+          try {
+            await callTelegram('editMessageText', {
               chat_id: chatId,
               message_id: message.messageId,
               text: `⚪ ${message.displayName} · Offline`,
-            }),
-            signal: AbortSignal.timeout(5000),
-          });
-          const result = telegramResponseSchema.parse(await response.json());
-          const alreadyUnavailable = response.status === 400 && result.description?.includes('message is not modified');
-          const deleted =
-            response.status === 400 &&
-            ['message to edit not found', 'MESSAGE_ID_INVALID'].some((reason) => result.description?.includes(reason));
-          if (!result.ok && !alreadyUnavailable && !deleted)
-            throw new Error(`Telegram returned HTTP ${response.status}`);
+            });
+          } catch (error) {
+            if (!(error instanceof TelegramError && error.status === 400)) throw error;
+            deleted = ['message to edit not found', 'MESSAGE_ID_INVALID'].some((reason) =>
+              error.description.includes(reason)
+            );
+            if (!deleted && !error.description.includes('message is not modified')) throw error;
+          }
           await transaction
             .update(plugInPlugs)
             .set(deleted ? { telegramMessage: null } : { telegramUnavailable: true })

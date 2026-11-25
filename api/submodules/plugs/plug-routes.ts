@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
+import log from 'loglevel';
 import { z } from 'zod/v4';
 import { requireAccessToken } from '../access-tokens/access-tokens';
 import {
@@ -9,6 +10,7 @@ import {
   plugReadingHeadersSchema,
 } from './plug-readings';
 import { listPlugStatuses, listPlugUsage } from './plug-status';
+import { sendFinishNotifications } from './plug-telegram-bot';
 
 export const plugRoutes = new Hono()
   .get('/', async (c) => c.json(await listPlugStatuses()))
@@ -27,12 +29,14 @@ export const plugRoutes = new Hono()
     zValidator('json', shellySwitchStatusSchema),
     zValidator('header', plugReadingHeadersSchema),
     async (c) => {
+      const { identifier } = c.req.valid('param');
       const telegramUnavailable = await recordPlugReading(
-        c.req.valid('param').identifier,
+        identifier,
         c.get('accessToken'),
         c.req.valid('json'),
         c.req.valid('header')
       );
+      sendFinishNotifications(identifier).catch((error) => log.warn('Could not check finish notifications', error));
       if (telegramUnavailable) c.header('X-Telegram-Unavailable', '1');
       return c.body(null, 204);
     }

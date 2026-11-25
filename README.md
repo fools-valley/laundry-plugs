@@ -58,6 +58,8 @@ The plug samples power every second. Any sample of 5 W or more counts as activit
 
 The plug sends the full switch status to the API every minute. After Telegram confirms the initial message, the next reading carries its chat, topic and message IDs and machine name in HTTP headers. The API stores that reference and checks once a minute for plugs that have missed more than five minutes of readings. It edits the tracked message to Offline once, then tells the plug to restore its own status when reporting resumes. The plug stores its Telegram message ID, chat and topic in persistent script storage and reuses that message after reboot. Telegram updates run independently of whether the reading reaches the API. When reporting resumes, the API can flag that it marked the saved message Offline so the plug refreshes it. The updated script may post a new status line on first run because earlier versions stored the ID only on the server.
 
+People can also message @FoolsLaundryBot directly. `/notify` answers with a button for each machine; after one is picked, the bot sends a private message when that machine's current or next cycle finishes. The API receives these messages by long polling `getUpdates` with `TELEGRAM_BOT_TOKEN`, so no webhook is needed, and it registers `/notify` in the private-chat command menu on startup. Requests are kept in `plugs.finish_notification` and checked after each reading of their plug. A cycle counts as finished when the website would show it as finished. Only one process may poll a bot at a time, so the API polls only when `NODE_ENV` is `production`.
+
 Switching destinations requires updating every plug's `telegramChatId` and `telegramTopicId` and the API's `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` together. A plug whose destination changes posts a new message there. For local testing, use the “Laundry” topic in the private “Fools Laundry Test” group: chat `-1004415267872`, topic `2`.
 
 ## Setting up a plug
@@ -89,7 +91,7 @@ One-time setup on the Swarm host:
 - `laundry-plugs` user for SSH deploys, registry account `laundry-plugs`, and GitHub secrets `DOCKER_REGISTRY_PASSWORD` and `SSH_KEY`
 - attachable overlay network `laundry-plugs-internal` for Postgres and the API, and the existing `caddy` overlay for HTTP ingress
 - Docker secrets: `laundry_plugs_postgres_password`, and `laundry_plugs_database_env` and `laundry_plugs_api_env` each containing `DATABASE_URL=postgres://laundry_plugs:<password>@laundry-plugs-database_postgres:5432/laundry_plugs`
-- Put the same bot token, chat ID and topic ID used on the plugs in the API env secret as `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` to enable offline edits.
+- Put the same bot token, chat ID and topic ID used on the plugs in the API env secret as `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` to enable offline edits. The token alone enables `/notify`.
 - `/home/laundry-plugs/data/laundry-plugs/database` for Postgres data
 
 ### Provision the Swarm secrets
