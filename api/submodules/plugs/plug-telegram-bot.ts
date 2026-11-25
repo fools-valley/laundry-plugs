@@ -19,9 +19,13 @@ const liveMachineMenuLimit = 50;
 // Spreading a full round over most of the minute keeps edits far below Telegram's limits and leaves slack before the next round.
 const machineMenuEditSpacingMilliseconds = (machineMenuRefreshMilliseconds * 0.8) / liveMachineMenuLimit;
 let telegramRetryAt = 0;
+let telegramBotRunning = false;
+let menuRefreshRunning = false;
+let menuRefreshRequested = false;
+let lastStatusSignature: string | undefined;
 
 const introduction =
-  "I watch the laundry machines at fools' valley. Pick a machine, and I'll message you when it starts or finishes. Send /cancel to stop one.";
+  "I watch the laundry machines at fools' valley. Pick a machine, and I'll message you when it starts or finishes. Send /cancel to cancel the notification.";
 
 const chatSchema = z.object({ id: z.number(), type: z.string() });
 const userSchema = z
@@ -172,6 +176,7 @@ async function refreshMachineMenus() {
   if (!menus.length) return;
   const keyboard = getMachineKeyboard(await listMachines());
   for (const { id } of menus) {
+    if (menuRefreshRequested) return;
     try {
       if (await refreshMachineMenu(id, keyboard)) await setTimeout(machineMenuEditSpacingMilliseconds);
     } catch (error) {
@@ -403,6 +408,34 @@ export async function sendNotifications(identifier: string) {
   }
 }
 
+// A request made during a round restarts it from the newest menu with fresh labels.
+async function runMachineMenuRefresh() {
+  if (menuRefreshRunning) {
+    menuRefreshRequested = true;
+    return;
+  }
+  menuRefreshRunning = true;
+  try {
+    do {
+      menuRefreshRequested = false;
+      if (Date.now() < telegramRetryAt) break;
+      await refreshMachineMenus();
+    } while (menuRefreshRequested);
+  } catch (error) {
+    log.warn('Could not refresh machine menus', error);
+  } finally {
+    menuRefreshRunning = false;
+  }
+}
+
+export async function refreshMachineMenusOnStatusChange() {
+  if (!telegramBotRunning) return;
+  const statusSignature = (await listMachines()).map((machine) => `${machine.id}:${machine.status}`).join(' ');
+  if (statusSignature === lastStatusSignature) return;
+  lastStatusSignature = statusSignature;
+  await runMachineMenuRefresh();
+}
+
 export function startTelegramBot() {
   // Telegram allows one poller per bot, so a local API would steal updates from production.
   if (process.env.NODE_ENV !== 'production') {
@@ -452,20 +485,11 @@ export function startTelegramBot() {
   }).catch((error) => log.warn('Could not set Telegram bot commands', error));
   pollUpdates().catch((error) => log.error('Telegram bot stopped', error));
 
-  let refreshing = false;
-  const menuTimer = setInterval(async () => {
-    if (refreshing || Date.now() < telegramRetryAt) return;
-    refreshing = true;
-    try {
-      await refreshMachineMenus();
-    } catch (error) {
-      log.warn('Could not refresh machine menus', error);
-    } finally {
-      refreshing = false;
-    }
-  }, machineMenuRefreshMilliseconds);
+  telegramBotRunning = true;
+  const menuTimer = setInterval(runMachineMenuRefresh, machineMenuRefreshMilliseconds);
   return () => {
     stopped = true;
+    telegramBotRunning = false;
     clearInterval(menuTimer);
   };
 }

@@ -10,7 +10,7 @@ import {
   plugReadingHeadersSchema,
 } from './plug-readings';
 import { listPlugStatuses, listPlugUsage } from './plug-status';
-import { sendNotifications } from './plug-telegram-bot';
+import { refreshMachineMenusOnStatusChange, sendNotifications } from './plug-telegram-bot';
 
 export const plugRoutes = new Hono()
   .get('/', async (c) => c.json(await listPlugStatuses()))
@@ -37,6 +37,7 @@ export const plugRoutes = new Hono()
         c.req.valid('header')
       );
       sendNotifications(identifier).catch((error) => log.warn('Could not check notifications', error));
+      refreshMachineMenusOnStatusChange().catch((error) => log.warn('Could not check machine menus', error));
       if (telegramUnavailable) c.header('X-Telegram-Unavailable', '1');
       return c.body(null, 204);
     }
