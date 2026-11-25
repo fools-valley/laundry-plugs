@@ -48,6 +48,11 @@ export async function listPlugStatuses() {
     orderBy: { createdAt: 'asc', identifier: 'asc' },
     with: {
       latestReadings: { columns: { powerWatts: true }, orderBy: { createdAt: 'desc' }, limit: 1 },
+      notifications: {
+        columns: { telegramChatId: true, telegramUser: true },
+        where: { notifiedAt: { isNull: true }, cancelledAt: { isNull: true } },
+        orderBy: { createdAt: 'asc' },
+      },
       readings: {
         columns: { createdAt: true, powerActivity: true },
         where: {
@@ -77,6 +82,14 @@ export async function listPlugStatuses() {
       lastPowerWatts: plug.latestReadings[0]?.powerWatts ?? null,
       cycleStartedAt: runningCycle ? new Date(runningCycle.startedAt).toISOString() : null,
       lastUsedAt: lastUsedAt === undefined ? null : new Date(lastUsedAt).toISOString(),
+      waitingNames: [
+        ...new Map(
+          plug.notifications.map(({ telegramChatId, telegramUser }) => [
+            telegramChatId,
+            telegramUser ? [telegramUser.firstName, telegramUser.lastName].filter(Boolean).join(' ') : null,
+          ])
+        ).values(),
+      ],
     };
   });
   return { plugs: plugStatuses };

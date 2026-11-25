@@ -11,10 +11,10 @@ export const relations = defineRelations(schema, (r) => ({
     }),
     readings: r.many.readingInPlugs(),
     latestReadings: r.many.readingInPlugs({ from: r.plugInPlugs.id, to: r.readingInPlugs.plugId }),
-    finishNotifications: r.many.finishNotificationInPlugs(),
+    notifications: r.many.notificationInPlugs(),
   },
-  finishNotificationInPlugs: {
-    plug: r.one.plugInPlugs({ from: r.finishNotificationInPlugs.plugId, to: r.plugInPlugs.id, optional: false }),
+  notificationInPlugs: {
+    plug: r.one.plugInPlugs({ from: r.notificationInPlugs.plugId, to: r.plugInPlugs.id, optional: false }),
   },
   readingInPlugs: {
     plug: r.one.plugInPlugs({ from: r.readingInPlugs.plugId, to: r.plugInPlugs.id, optional: false }),

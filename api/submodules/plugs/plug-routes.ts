@@ -10,7 +10,7 @@ import {
   plugReadingHeadersSchema,
 } from './plug-readings';
 import { listPlugStatuses, listPlugUsage } from './plug-status';
-import { sendFinishNotifications } from './plug-telegram-bot';
+import { sendNotifications } from './plug-telegram-bot';
 
 export const plugRoutes = new Hono()
   .get('/', async (c) => c.json(await listPlugStatuses()))
@@ -36,7 +36,7 @@ export const plugRoutes = new Hono()
         c.req.valid('json'),
         c.req.valid('header')
       );
-      sendFinishNotifications(identifier).catch((error) => log.warn('Could not check finish notifications', error));
+      sendNotifications(identifier).catch((error) => log.warn('Could not check notifications', error));
       if (telegramUnavailable) c.header('X-Telegram-Unavailable', '1');
       return c.body(null, 204);
     }

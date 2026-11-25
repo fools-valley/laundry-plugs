@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import type { PlugStatus } from '../api/api-client';
 
 defineProps<{ plug?: PlugStatus; label?: string | undefined }>();
+
+const waitingDialogOpen = ref(false);
 
 const statusLabels = {
   idle: 'available',
@@ -20,10 +23,26 @@ const statusLabels = {
     <p class="headline"><span class="skeleton">waiting for you</span></p>
     <p class="telemetry"><span class="skeleton">updated just now · 0 W</span></p>
   </article>
-  <article v-else class="plug-card column gap-md" :class="`plug-card--${plug.status}`">
-    <div class="column items-start gap-sm">
+  <article v-else class="plug-card column no-wrap gap-md" :class="`plug-card--${plug.status}`">
+    <div class="column no-wrap items-start gap-sm">
       <h3 class="display">{{ label ?? plug.identifier.replaceAll('-', ' ') }}</h3>
-      <span class="status">✦ {{ statusLabels[plug.status] }}</span>
+      <div class="status-row row items-center">
+        <span class="status">✦ {{ statusLabels[plug.status] }}</span>
+        <span v-if="plug.waitingNames.length === 1" class="waiting row no-wrap">
+          <span class="waiting-name">
+            {{ plug.waitingNames[0] ?? 'someone' }}<q-tooltip>{{ plug.waitingNames[0] ?? 'someone' }}</q-tooltip>
+          </span>
+          <span class="waiting-suffix">&nbsp;is waiting</span>
+        </span>
+        <button
+          v-else-if="plug.waitingNames.length > 1"
+          type="button"
+          class="waiting waiting-button"
+          @click="waitingDialogOpen = true"
+        >
+          {{ plug.waitingNames.length }} people are waiting
+        </button>
+      </div>
     </div>
 
     <p class="headline">
@@ -36,9 +55,22 @@ const statusLabels = {
       <template v-else-if="plug.status === 'offline'">unplugged</template>
       <template v-else>waiting for you</template>
     </p>
+    <q-dialog v-model="waitingDialogOpen" transition-duration="0">
+      <div class="waiting-dialog column gap-md">
+        <h4 class="section-label q-my-none">waiting for {{ label ?? plug.identifier.replaceAll('-', ' ') }}</h4>
+        <ul class="column gap-xs">
+          <li v-for="(name, index) in plug.waitingNames" :key="index">✦ {{ name ?? 'someone' }}</li>
+        </ul>
+        <button v-close-popup type="button" class="waiting-button self-end">close</button>
+      </div>
+    </q-dialog>
     <p v-if="plug.lastReadingAt" class="telemetry text-muted">
       updated <BaseDate :value="plug.lastReadingAt" />
       <template v-if="plug.lastPowerWatts !== null"> · <BasePower :watts="plug.lastPowerWatts" /> </template>
+      ·
+      <a :href="`https://t.me/FoolsLaundryBot?start=${plug.identifier}`" target="_blank" rel="noopener"
+        ><em>notify</em></a
+      >
     </p>
   </article>
 </template>
@@ -107,6 +139,68 @@ const statusLabels = {
   line-height: 1.7;
   margin: 0;
 }
+.status-row {
+  max-width: 100%;
+  gap: 8px 16px;
+
+  .status {
+    flex: none;
+  }
+}
+
+.waiting {
+  min-width: 0;
+  max-width: 100%;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.waiting-name,
+button.waiting {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waiting-suffix {
+  flex: none;
+}
+
+.waiting-button {
+  font: inherit;
+  color: $ink;
+  background: none;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: none;
+    background: $ink;
+    color: $paper;
+  }
+}
+
+.waiting-dialog {
+  min-width: min(22rem, 90vw);
+  padding: 1.25rem;
+  background: $paper;
+  border: 1px solid $ink;
+  box-shadow: none;
+
+  h4 {
+    line-height: 1.5;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
 .telemetry {
   margin: auto 0 0;
   font-size: 0.75rem;

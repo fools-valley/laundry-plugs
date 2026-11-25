@@ -1,0 +1,1 @@
+CREATE INDEX "notification_telegram_chat_id_created_at_index" ON "plugs"."notification" ("telegram_chat_id","created_at");

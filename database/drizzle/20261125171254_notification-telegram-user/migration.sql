@@ -1,0 +1,1 @@
+ALTER TABLE "plugs"."notification" ADD COLUMN "telegram_user" jsonb;

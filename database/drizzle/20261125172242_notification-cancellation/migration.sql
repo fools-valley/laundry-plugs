@@ -1,0 +1,3 @@
+ALTER TABLE "plugs"."notification" ADD COLUMN "cancelled_at" timestamp with time zone;--> statement-breakpoint
+DROP INDEX "plugs"."notification_plug_id_telegram_chat_id_event_index";--> statement-breakpoint
+CREATE UNIQUE INDEX "notification_plug_id_telegram_chat_id_event_index" ON "plugs"."notification" ("plug_id","telegram_chat_id","event") WHERE ("notified_at" is null) and ("cancelled_at" is null);

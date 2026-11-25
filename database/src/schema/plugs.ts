@@ -9,7 +9,7 @@ import {
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
-import { isNull } from 'drizzle-orm';
+import { isNull, sql } from 'drizzle-orm';
 import { baseColumns, baseColumnsWithoutUpdatedAt } from '../columns';
 import { accessTokenInAuth } from './access-tokens';
 
@@ -58,19 +58,31 @@ export const readingInPlugs = plugsSchema.table(
   (table) => [index().on(table.createdAt), index().on(table.plugId, table.createdAt)]
 );
 
-export const finishNotificationInPlugs = plugsSchema.table(
-  'finish_notification',
+export const notificationEventInPlugs = plugsSchema.enum('notification_event', ['started', 'finished']);
+
+export const notificationInPlugs = plugsSchema.table(
+  'notification',
   {
     ...baseColumns,
     plugId: uuid('plug_id')
       .notNull()
       .references(() => plugInPlugs.id),
     telegramChatId: text('telegram_chat_id').notNull(),
+    event: notificationEventInPlugs('event').notNull().default('finished'),
+    telegramUser: jsonb('telegram_user').$type<{
+      firstName: string;
+      lastName: string | null;
+      username: string | null;
+    }>(),
     notifiedAt: timestamp('notified_at', { withTimezone: true, mode: 'string' }),
+    cancelledAt: timestamp('cancelled_at', { withTimezone: true, mode: 'string' }),
   },
   (table) => [
     index().on(table.createdAt),
-    uniqueIndex().on(table.plugId, table.telegramChatId).where(isNull(table.notifiedAt)),
+    index().on(table.telegramChatId, table.createdAt),
+    uniqueIndex()
+      .on(table.plugId, table.telegramChatId, table.event)
+      .where(sql`${isNull(table.notifiedAt)} and ${isNull(table.cancelledAt)}`),
   ]
 );
 
