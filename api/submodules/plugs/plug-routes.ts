@@ -10,7 +10,8 @@ import {
   plugReadingHeadersSchema,
 } from './plug-readings';
 import { listPlugStatuses, listPlugUsage } from './plug-status';
-import { refreshMachineMenusOnStatusChange, sendNotifications } from './plug-telegram-bot';
+import { refreshMachineMenusOnStatusChange } from '../telegram/telegram-machine-menus';
+import { sendNotifications } from '../telegram/telegram-notifications';
 
 export const plugRoutes = new Hono()
   .get('/', async (c) => c.json(await listPlugStatuses()))

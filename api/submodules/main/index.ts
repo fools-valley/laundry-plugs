@@ -3,8 +3,8 @@ import log from 'loglevel';
 import { z } from 'zod/v4';
 import { db } from '@laundry-plugs/database/src/db';
 import { app } from './app';
-import { startTelegramAvailabilityCheck } from '../plugs/plug-telegram';
-import { startTelegramBot } from '../plugs/plug-telegram-bot';
+import { startTelegramAvailabilityCheck } from '../telegram/telegram-plug-messages';
+import { startTelegramBot } from '../telegram/telegram-bot';
 
 const defaultLogLevel = process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
 log.setLevel(
