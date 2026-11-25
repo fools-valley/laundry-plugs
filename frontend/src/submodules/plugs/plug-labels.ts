@@ -13,3 +13,7 @@ export function getPlugLabels(identifiers: Iterable<string>) {
   }
   return labels;
 }
+
+export function getPlugLocation(identifier: string) {
+  return identifier.replace(/-\d+$/, '').replace(/-[a-z0-9]+$/, '');
+}

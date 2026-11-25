@@ -50,6 +50,18 @@ const statusLabels = {
   border-bottom: 1px solid $ink;
   background: $paper;
 
+  &--edge-left {
+    border-left: 1px solid $ink;
+  }
+
+  &--edge-top {
+    border-top: 1px solid $ink;
+  }
+
+  &--after-gap {
+    margin-top: 1rem;
+  }
+
   h3 {
     font-size: 1.8rem;
     line-height: 1.15;
