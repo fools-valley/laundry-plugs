@@ -4,12 +4,18 @@ import log from 'loglevel';
 import { z } from 'zod/v4';
 import { offlineAfterMilliseconds } from './plug-status';
 
-const telegramResponseSchema = z.object({ ok: z.boolean(), description: z.string().default(''), result: z.unknown() });
+const telegramResponseSchema = z.object({
+  ok: z.boolean(),
+  description: z.string().default(''),
+  result: z.unknown(),
+  parameters: z.object({ retry_after: z.number().optional() }).optional(),
+});
 
 export class TelegramError extends Error {
   constructor(
     readonly status: number,
-    readonly description: string
+    readonly description: string,
+    readonly retryAfterSeconds: number | undefined
   ) {
     super(`Telegram returned HTTP ${status}: ${description}`);
   }
@@ -25,7 +31,7 @@ export async function callTelegram(method: string, parameters: Record<string, un
     signal: AbortSignal.timeout(timeoutMilliseconds),
   });
   const body = telegramResponseSchema.parse(await response.json());
-  if (!body.ok) throw new TelegramError(response.status, body.description);
+  if (!body.ok) throw new TelegramError(response.status, body.description, body.parameters?.retry_after);
   return body.result;
 }
 

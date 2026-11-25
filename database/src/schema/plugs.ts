@@ -5,6 +5,7 @@ import {
   uuid,
   boolean,
   doublePrecision,
+  integer,
   jsonb,
   index,
   uniqueIndex,
@@ -84,6 +85,18 @@ export const notificationInPlugs = plugsSchema.table(
       .on(table.plugId, table.telegramChatId, table.event)
       .where(sql`${isNull(table.notifiedAt)} and ${isNull(table.cancelledAt)}`),
   ]
+);
+
+export const machineMenuInPlugs = plugsSchema.table(
+  'machine_menu',
+  {
+    ...baseColumns,
+    telegramChatId: text('telegram_chat_id').notNull(),
+    telegramMessageId: integer('telegram_message_id').notNull(),
+    buttonLabels: jsonb('button_labels').$type<string[]>().notNull(),
+    closedAt: timestamp('closed_at', { withTimezone: true, mode: 'string' }),
+  },
+  (table) => [index().on(table.createdAt), uniqueIndex().on(table.telegramChatId).where(isNull(table.closedAt))]
 );
 
 export type Plug = typeof plugInPlugs.$inferSelect;

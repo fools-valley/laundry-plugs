@@ -167,8 +167,16 @@ button.waiting {
   flex: none;
 }
 
+.status-row .waiting {
+  padding: 0.15rem 0.75rem;
+  border: 1px solid $ink;
+  border-radius: 999px;
+  background: mix($ink, $paper, 4%);
+}
+
 .waiting-button {
   font: inherit;
+  line-height: inherit;
   color: $ink;
   background: none;
   border: none;
