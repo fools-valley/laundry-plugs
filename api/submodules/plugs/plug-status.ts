@@ -86,7 +86,7 @@ export async function listPlugStatuses() {
         ...new Map(
           plug.notifications.map(({ telegramChatId, telegramUser }) => [
             telegramChatId,
-            telegramUser ? [telegramUser.firstName, telegramUser.lastName].filter(Boolean).join(' ') : null,
+            telegramUser?.firstName ?? null,
           ])
         ).values(),
       ],
