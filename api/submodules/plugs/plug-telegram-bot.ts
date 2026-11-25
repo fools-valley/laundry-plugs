@@ -15,7 +15,7 @@ import { cyclePauseMilliseconds, listPlugStatuses } from './plug-status';
 const dailyNotificationLimit = 1000;
 
 const introduction =
-  "I watch the laundry machines at fools' valley. Send /notify and pick a machine, and I'll message you when it starts or finishes. Send /cancel to stop one.";
+  "I watch the laundry machines at fools' valley. Pick a machine, and I'll message you when it starts or finishes. Send /cancel to stop one.";
 
 const chatSchema = z.object({ id: z.number(), type: z.string() });
 const userSchema = z
@@ -87,19 +87,11 @@ function describeMachine({ displayName, status, cycleStartedAt }: Machine) {
   }
 }
 
-async function sendIntroduction(chatId: number) {
+async function sendMachineChoice(chatId: number, question: string) {
   const machines = await listMachines();
   await callTelegram('sendMessage', {
     chat_id: chatId,
-    text: [introduction, machines.map(describeMachine).join('\n')].filter(Boolean).join('\n\n'),
-  });
-}
-
-async function sendMachineChoice(chatId: number) {
-  const machines = await listMachines();
-  await callTelegram('sendMessage', {
-    chat_id: chatId,
-    text: machines.length ? 'Which machine should I watch?' : 'No machines have reported yet.',
+    text: machines.length ? question : 'No machines have reported yet.',
     reply_markup: {
       inline_keyboard: machines.map((machine) => [
         { text: describeMachine(machine), callback_data: `notify:${machine.id}` },
@@ -251,10 +243,11 @@ async function handleMessage(chatId: number, telegramUser: TelegramUser | undefi
       : undefined;
   if (machine && telegramUser)
     await callTelegram('sendMessage', { chat_id: chatId, ...(await chooseMachine(chatId, telegramUser, machine)) });
-  else if (command === 'notify' || (command === 'start' && argument === 'notify')) await sendMachineChoice(chatId);
+  else if (command === 'notify' || (command === 'start' && argument === 'notify'))
+    await sendMachineChoice(chatId, 'Which machine should I watch?');
   else if (command === 'cancel')
     await callTelegram('sendMessage', { chat_id: chatId, ...(await getCancellationMenu(chatId)) });
-  else await sendIntroduction(chatId);
+  else await sendMachineChoice(chatId, introduction);
 }
 
 async function handleUpdate(update: unknown) {
