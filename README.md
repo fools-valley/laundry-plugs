@@ -94,7 +94,7 @@ One-time setup on the Swarm host:
 
 ### Provision the Swarm secrets
 
-Copy `refresh-envs` from this repository to `/home/laundry-plugs/refresh-envs` on postmodern. Run the commands below as the `laundry-plugs` user on that host. The `envs/` directory holds the private source files for the three Swarm secrets.
+Run the commands below as the `laundry-plugs` user on postmodern. The `envs/` directory holds the private source files for the three Swarm secrets.
 
 For a fresh installation, generate the files with one shared database password:
 
@@ -112,6 +112,16 @@ For a fresh installation, generate the files with one shared database password:
 )
 ```
 
-Add `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` to `envs/api.env` if using Telegram offline edits. Run `./refresh-envs` before rerunning the first deployment. It creates the data directory, the attachable internal overlay and any missing secrets, and prints what it did with each secret. The frontend stack registers the site with the existing Caddy Docker Proxy, which serves the frontend and forwards `/api/*` to the API with the prefix stripped.
+Add `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` and `TELEGRAM_TOPIC_ID` to `envs/api.env` if using Telegram offline edits. Then create the data directory, the internal overlay and the secrets before the first deployment:
 
-After editing any file in `envs/`, run `./refresh-envs` again. It stores a SHA-256 of each file as a label on its Swarm secret and rolls out only the services whose file changed, twice each, while it swaps in a temporary Swarm secret and then restores the original secret name used by Compose. Secrets created before these labels count as changed once. Refreshing `database` restarts the migrator. On an initialized database, changing `envs/postgres.password` alone does not change the database user's password. Keep the password file and both connection strings consistent with the actual Postgres credential.
+```bash
+mkdir -p /home/laundry-plugs/data/laundry-plugs/database
+docker network create --driver overlay --attachable laundry-plugs-internal
+docker secret create laundry_plugs_postgres_password envs/postgres.password
+docker secret create laundry_plugs_database_env envs/database.env
+docker secret create laundry_plugs_api_env envs/api.env
+```
+
+The frontend stack registers the site with the existing Caddy Docker Proxy, which serves the frontend and forwards `/api/*` to the API with the prefix stripped.
+
+Swarm secrets cannot be edited in place. To change one, remove the stack that uses it (for example `docker stack rm laundry-plugs-api` for `api.env`), replace the secret with `docker secret rm` and `docker secret create`, and deploy again. On an initialized database, changing `envs/postgres.password` alone does not change the database user's password. Keep the password file and both connection strings consistent with the actual Postgres credential.
