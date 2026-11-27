@@ -31,6 +31,7 @@ const powerActivityHeaderSchema = z.union([
 export const plugReadingHeadersSchema = z.object({
   'x-plug-activity': powerActivityHeaderSchema,
   'x-plug-ip-address': z.ipv4().optional(),
+  'x-plug-uptime': z.coerce.number().int().nonnegative().max(2147483647).optional(),
   'x-telegram-chat-id': z
     .string()
     .regex(/^-100[0-9]+$/)
@@ -82,6 +83,7 @@ export async function recordPlugReading(
       currentAmperes: switchStatus.current,
       energyTotalWattHours: switchStatus.aenergy?.total,
       temperatureCelsius: switchStatus.temperature?.tC,
+      uptimeSeconds: readingHeaders['x-plug-uptime'],
       payload: switchStatus,
     });
 

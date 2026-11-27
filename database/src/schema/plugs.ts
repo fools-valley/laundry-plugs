@@ -54,6 +54,7 @@ export const readingInPlugs = plugsSchema.table(
     currentAmperes: doublePrecision('current_amperes'),
     energyTotalWattHours: doublePrecision('energy_total_watt_hours'),
     temperatureCelsius: doublePrecision('temperature_celsius'),
+    uptimeSeconds: integer('uptime_seconds'),
     payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
   },
   (table) => [index().on(table.createdAt), index().on(table.plugId, table.createdAt)]
@@ -97,6 +98,21 @@ export const machineMenuInPlugs = plugsSchema.table(
     closedAt: timestamp('closed_at', { withTimezone: true, mode: 'string' }),
   },
   (table) => [index().on(table.createdAt), uniqueIndex().on(table.telegramChatId).where(isNull(table.closedAt))]
+);
+
+export const outageCauseInPlugs = plugsSchema.enum('outage_cause', ['power_cut', 'network_outage']);
+
+export const outageInPlugs = plugsSchema.table(
+  'outage',
+  {
+    ...baseColumns,
+    house: text('house').notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true, mode: 'string' }).notNull(),
+    restoredAt: timestamp('restored_at', { withTimezone: true, mode: 'string' }),
+    poweredOnAt: timestamp('powered_on_at', { withTimezone: true, mode: 'string' }),
+    cause: outageCauseInPlugs('cause'),
+  },
+  (table) => [index().on(table.createdAt), uniqueIndex().on(table.house).where(isNull(table.restoredAt))]
 );
 
 export type Plug = typeof plugInPlugs.$inferSelect;

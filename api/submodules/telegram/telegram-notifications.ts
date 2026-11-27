@@ -1,4 +1,4 @@
-import { and, count, eq, gte, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNull, sql } from 'drizzle-orm';
 import log from 'loglevel';
 import { db, notificationEventInPlugs, notificationInPlugs, plugInPlugs } from '@laundry-plugs/database/src/db';
 import { cyclePauseMilliseconds } from '../plugs/plug-status';
@@ -50,6 +50,20 @@ async function requestNotification(
 
 function describeEvent(displayName: string, event: NotificationEvent) {
   return `${displayName} ${event === 'started' ? 'is in use' : 'finishes'}`;
+}
+
+// Telegram cannot resolve a username to a chat, so only people who have asked for a notification can be found.
+export async function findChatIdsByUsername(usernames: string[]) {
+  const chats = await db
+    .selectDistinct({ telegramChatId: notificationInPlugs.telegramChatId })
+    .from(notificationInPlugs)
+    .where(
+      inArray(
+        sql`lower(${notificationInPlugs.telegramUser}->>'username')`,
+        usernames.map((username) => username.toLowerCase())
+      )
+    );
+  return chats.map(({ telegramChatId }) => telegramChatId);
 }
 
 export async function getCancellationMenu(chatId: number, heading?: string) {

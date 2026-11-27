@@ -5,6 +5,7 @@ import { db } from '@laundry-plugs/database/src/db';
 import { app } from './app';
 import { startTelegramAvailabilityCheck } from '../telegram/telegram-plug-messages';
 import { startTelegramBot } from '../telegram/telegram-bot';
+import { startOutageAlerts } from '../outages/outage-alerts';
 
 const defaultLogLevel = process.env.NODE_ENV === 'production' ? 'warn' : 'debug';
 log.setLevel(
@@ -16,10 +17,12 @@ const server = serve({ fetch: app.fetch, port }, () => log.info(`API listening o
 
 const stopTelegramAvailabilityCheck = startTelegramAvailabilityCheck();
 const stopTelegramBot = startTelegramBot();
+const stopOutageAlerts = startOutageAlerts();
 
 async function shutDown() {
   stopTelegramAvailabilityCheck();
   stopTelegramBot();
+  stopOutageAlerts();
   server.close();
   await db.$client.end();
   process.exit(0);
